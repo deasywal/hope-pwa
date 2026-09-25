@@ -5,7 +5,7 @@
 <template>
   <div class="transaksi-container">
     <h1>Halaman Kasir & Transaksi</h1>
-    <p>Fitur pencatatan pembayaran dan keranjang belanja akan dipasang di sini.</p>
+    <p>Fitur pencatatan pembayaran.</p>
   </div>
 </template>
 
