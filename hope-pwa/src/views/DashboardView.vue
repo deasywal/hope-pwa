@@ -1,5 +1,5 @@
 <template>
   <main>
-    <h1>Ini Halaman Produk Asywal</h1>
+    <h1>Ini Halaman Produk</h1>
   </main>
 </template>
