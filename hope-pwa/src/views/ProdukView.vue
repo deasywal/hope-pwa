@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 
-// Data dummy produk sementara
+// Buat data dummy produk sementara
 const daftarProduk = ref([
   { id: 1, nama: 'Kopi Susu Gula Aren', harga: 15000, stok: 20 },
   { id: 2, nama: 'Roti Bakar Coklat', harga: 12000, stok: 15 }
@@ -30,7 +30,7 @@ const tambahProduk = () => {
 <template>
   <main class="produk-container">
     <h1>Manajemen Produk UMKM</h1>
-    <p><em>(Kerangka fungsional - Desain menunggu dari Ihsan)</em></p>
+    <p><em>(Kerangka fungsional - Menunggu desain</em></p>
 
     <!-- Kotak Form Tambah Produk -->
     <div class="form-tambah">
