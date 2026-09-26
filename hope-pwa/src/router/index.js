@@ -9,31 +9,12 @@ import RegisterView from '../views/RegisterView.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    {
-      path: '/login', // 2. Tambahkan rute login di sini
-      name: 'login',
-      component: LoginView
-    },
-    {
-      path: '/',
-      name: 'dashboard',
-      component: DashboardView
-    },
-    {
-      path: '/produk',
-      name: 'produk',
-      component: ProdukView
-    },
-    {
-      path: '/transaksi',
-      name: 'transaksi',
-      component: TransaksiView
-    },
-    {
-      path: '/laporan',
-      name: 'laporan',
-      component: LaporanView
-    }
+    { path: '/', name: 'dashboard', component: DashboardView },
+    { path: '/produk', name: 'produk', component: ProdukView },
+    { path: '/transaksi', name: 'transaksi', component: TransaksiView },
+    { path: '/laporan', name: 'laporan', component: LaporanView },
+    { path: '/login', name: 'login', component: LoginView },
+    { path: '/register', name: 'register', component: RegisterView }
   ]
 })
 
