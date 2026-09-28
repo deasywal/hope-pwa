@@ -9,13 +9,13 @@ const password = ref('')
 const errorMessage = ref('')
 const successMessage = ref('')
 
-// State untuk tombol lihat/sembunyi password
+// Buat tombol lihat/sembunyi password
 const showPassword = ref(false)
 const togglePasswordVisibility = () => {
   showPassword.value = !showPassword.value
 }
 
-// Fungsi validasi format email sederhana
+// Fungsi validasi format email
 const isValidEmail = (emailStr) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   return emailRegex.test(emailStr)
@@ -25,25 +25,25 @@ const handleRegister = () => {
   errorMessage.value = ''
   successMessage.value = ''
 
-  // 1. Validasi kolom kosong
+  // 1. Buat validasi
   if (!brandName.value.trim() || !email.value.trim() || !password.value.trim()) {
     errorMessage.value = 'Semua kolom wajib diisi!'
     return
   }
 
-  // 2. Validasi format email
+  // 2. Buat validasi format email
   if (!isValidEmail(email.value)) {
     errorMessage.value = 'Format email tidak valid! Masukkan email yang benar.'
     return
   }
 
-  // 3. Validasi panjang password minimal 6 karakter
+  // 3. Ini buat validasi panjang password minimal 6 karakter
   if (password.value.length < 6) {
     errorMessage.value = 'Password terlalu pendek! Minimal harus 6 karakter.'
     return
   }
 
-  // Simpan data akun ke localStorage agar bisa dipakai login nanti
+  //Ini buat simpan data akun ke localStorage
   const accountData = {
     brandName: brandName.value.trim(),
     email: email.value.trim(),
@@ -53,7 +53,7 @@ const handleRegister = () => {
 
   successMessage.value = 'Akun berhasil dibuat! Mengalihkan ke halaman login...'
 
-  // Mengarahkan kembali ke halaman login setelah 1.5 detik
+  // Mengarahkan kembali ke halaman login 
   setTimeout(() => {
     router.push('/login')
   }, 1500)
