@@ -1,6 +1,17 @@
+<script setup>
+// Halaman Laporan
+</script>
+
 <template>
-  <div class="laporan">
-    <h1>Halaman Laporan</h1>
-    <p>Ini untuk menu laporan.</p>
+  <div class="laporan-container">
+    <h1>Halaman laporan</h1>
+    <P>Laporan penjualan guys</P>
   </div>
 </template>
+
+<style scoped>
+.laporan-container {
+  padding: 20px;
+  font-family: sans-serif;
+}
+</style>

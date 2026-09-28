@@ -1,112 +1,218 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 
-// Buat data dummy produk sementara
-const daftarProduk = ref([
-  { id: 1, nama: 'Kopi Susu Gula Aren', harga: 15000, stok: 20 },
-  { id: 2, nama: 'Roti Bakar Coklat', harga: 12000, stok: 15 }
-])
+const productList = ref([])
+const showForm = ref(false)
+const form = ref({
+  name: '',
+  price: '',
+  stock: ''
+})
 
-const namaProdukBaru = ref('')
-const hargaProdukBaru = ref('')
-const stokProdukBaru = ref('')
-
-const tambahProduk = () => {
-  if (namaProdukBaru.value !== '' && hargaProdukBaru.value !== '') {
-    daftarProduk.value.push({
-      id: Date.now(),
-      nama: namaProdukBaru.value,
-      harga: Number(hargaProdukBaru.value),
-      stok: Number(stokProdukBaru.value)
-    })
-    
-    namaProdukBaru.value = ''
-    hargaProdukBaru.value = ''
-    stokProdukBaru.value = ''
+onMounted(() => {
+  const savedProducts = localStorage.getItem('productsList')
+  if (savedProducts) {
+    productList.value = JSON.parse(savedProducts)
   }
+})
+
+const saveProduct = () => {
+  if (!form.value.name || !form.value.price || !form.value.stock) {
+    alert('Mohon isi semua data produk!')
+    return
+  }
+
+  const newProduct = {
+    id: Date.now(),
+    name: form.value.name,
+    price: Number(form.value.price.replace(/\D/g, '')),
+    stock: Number(form.value.stock.replace(/\D/g, ''))
+  }
+
+  productList.value.push(newProduct)
+  localStorage.setItem('productsList', JSON.stringify(productList.value))
+
+  form.value.name = ''
+  form.value.price = ''
+  form.value.stock = ''
+  showForm.value = false
+}
+
+const deleteProduct = (id) => {
+  productList.value = productList.value.filter(p => p.id !== id)
+  localStorage.setItem('productsList', JSON.stringify(productList.value))
 }
 </script>
 
 <template>
-  <main class="produk-container">
-    <h1>Manajemen Produk UMKM</h1>
-    <p><em>(Kerangka fungsional - Menunggu desain</em></p>
-
-    <!-- Kotak Form Tambah Produk -->
-    <div class="form-tambah">
-      <h3>Tambah Produk Baru</h3>
-      <input v-model="namaProdukBaru" type="text" placeholder="Nama Produk" />
-      <input v-model="hargaProdukBaru" type="number" placeholder="Harga Barang" />
-      <input v-model="stokProdukBaru" type="number" placeholder="Jumlah Stok" />
-      <button @click="tambahProduk">Simpan Produk</button>
+  <div class="page-wrapper">
+    <div class="header-nav">
+      <h3 class="page-title">Kelola Produk</h3>
+      <button @click="showForm = !showForm" class="action-btn">
+        {{ showForm ? 'Batal' : '+ Tambah Produk' }}
+      </button>
     </div>
 
-    <!-- Kotak Daftar Produk yang sudah ada -->
-    <div class="list-produk">
-      <h3>Daftar Barang Tersedia</h3>
-      <ul>
-        <li v-for="produk in daftarProduk" :key="produk.id">
-          <strong>{{ produk.nama }}</strong> 
-          - Rp {{ produk.harga.toLocaleString('id-ID') }} 
-          <span class="stok">(Sisa Stok: {{ produk.stok }})</span>
-        </li>
-      </ul>
+    <div v-if="showForm" class="card form-box">
+      <h4 class="form-title">Tambah Produk Baru</h4>
+      <div class="input-group">
+        <label>Nama Produk</label>
+        <input v-model="form.name" type="text" placeholder="Contoh: Makaroni Goreng" />
+      </div>
+      <div class="input-group">
+        <label>Harga (Rp)</label>
+        <!-- Menggunakan type="text" agar bersih tanpa panah atas-bawah -->
+        <input v-model="form.price" type="text" placeholder="Contoh: 1000" />
+      </div>
+      <div class="input-group">
+        <label>Stok</label>
+        <input v-model="form.stock" type="text" placeholder="Contoh: 10" />
+      </div>
+      <button @click="saveProduct" class="save-btn">Simpan Produk</button>
     </div>
-  </main>
+
+    <div class="product-list">
+      <div v-if="productList.length === 0" class="card content-box">
+        <p class="info-text">Belum ada produk yang ditambahkan.</p>
+      </div>
+
+      <div v-for="product in productList" :key="product.id" class="card product-card">
+        <div>
+          <h4 class="prod-name">{{ product.name }}</h4>
+          <p class="prod-info">Harga: Rp {{ product.price.toLocaleString() }} | Stok: {{ product.stock }}</p>
+        </div>
+        <button @click="deleteProduct(product.id)" class="delete-btn">Hapus</button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <style scoped>
-.produk-container {
+.page-wrapper {
   padding: 20px;
   max-width: 600px;
+  margin: 0 auto;
   font-family: sans-serif;
+  background-color: #ffffff;
+  min-height: 90vh;
+  box-sizing: border-box;
+  padding-bottom: 80px;
 }
 
-.form-tambah {
-  margin-bottom: 20px;
-  padding: 15px;
-  border: 2px dashed #ccc;
-  border-radius: 8px;
+.header-nav {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
 }
 
-.form-tambah input {
-  padding: 8px;
-  border: 1px solid #aaa;
-  border-radius: 4px;
+.page-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: bold;
+  color: #2f3640;
 }
 
-.form-tambah button {
-  padding: 10px;
-  background-color: #2c3e50;
+.card {
+  background: #ffffff;
+  border: 1px solid #dcdde1;
+  border-radius: 8px;
+  padding: 16px;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+}
+
+.content-box {
+  text-align: center;
+  padding: 30px;
+}
+
+.info-text {
+  font-size: 13px;
+  color: #718093;
+  margin: 0;
+}
+
+.action-btn {
+  background-color: #2f3640;
   color: white;
   border: none;
-  border-radius: 4px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: bold;
   cursor: pointer;
+}
+
+.form-box {
+  background-color: #f5f6fa;
+  margin-bottom: 20px;
+}
+
+.form-title {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #2f3640;
+}
+
+.input-group {
+  margin-bottom: 12px;
+}
+
+.input-group label {
+  display: block;
+  font-size: 11px;
+  color: #718093;
+  margin-bottom: 4px;
   font-weight: bold;
 }
 
-.form-tambah button:hover {
-  background-color: #1a252f;
+.input-group input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #dcdde1;
+  border-radius: 6px;
+  box-sizing: border-box;
+  font-size: 13px;
 }
 
-.list-produk ul {
-  list-style-type: none;
-  padding: 0;
+.save-btn {
+  width: 100%;
+  background-color: #2f3640;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
 }
 
-.list-produk li {
-  padding: 12px;
-  border-bottom: 1px solid #eee;
+.product-card {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.stok {
-  color: #d35400;
-  font-size: 0.9em;
+.prod-name {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  color: #2f3640;
+}
+
+.prod-info {
+  margin: 0;
+  font-size: 12px;
+  color: #718093;
+}
+
+.delete-btn {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
 }
 </style>

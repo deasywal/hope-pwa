@@ -1,12 +1,12 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 
-// Variabel untuk menyimpan nama brand dan info user
+// Variabel untuk nama Brand dan informasi user 
 const brandName = ref('Nama Usaha')
 const ownerEmail = ref('')
 
 onMounted(() => {
-  // Mengambil data dari localStorage yang disimpan saat Register
+  // Data dari localStorage yang disimpan saat Register
   const savedData = localStorage.getItem('registeredAccount')
   if (savedData) {
     const account = JSON.parse(savedData)
@@ -52,26 +52,7 @@ const tanggalHariIni = 'Senin, 28 September 2026'
         <span class="stat-value">Rp 0</span>
       </div>
     </div>
-
-    <!-- Bagian Menu Utama (4 Menu: Beranda, Produk, Transaksi, Laporan) -->
-    <div class="menu-utama-section">
-      <h3 class="menu-utama-title">Menu Utama</h3>
-      <div class="menu-grid">
-        <router-link to="/" class="menu-item">
-          <span>Beranda</span>
-        </router-link>
-        <router-link to="/produk" class="menu-item">
-          <span>Produk</span>
-        </router-link>
-        <router-link to="/transaksi" class="menu-item">
-          <span>Transaksi</span>
-        </router-link>
-        <router-link to="/laporan" class="menu-item">
-          <span>Laporan</span>
-        </router-link>
-      </div>
-    </div>
-
+    
   </div>
 </template>
 
@@ -142,7 +123,7 @@ const tanggalHariIni = 'Senin, 28 September 2026'
   color: #2c3e50;
 }
 
-/* Tata Letak 4 Menu Utama Berjajar */
+/* Navbar 4 Menu */
 .menu-utama-section {
   margin-top: 8px;
 }
@@ -156,20 +137,20 @@ const tanggalHariIni = 'Senin, 28 September 2026'
 
 .menu-grid {
   display: flex;
-  gap: 8px; /* Jarak antar tombol diperkecil sedikit agar muat 4 menu */
+  gap: 8px; 
   width: 100%;
 }
 
 .menu-item {
   flex: 1;
   background: #ffffff;
-  padding: 14px 6px; /* Padding samping disesuaikan */
+  padding: 14px 6px; 
   border-radius: 8px;
   text-align: center;
   text-decoration: none;
   color: #34495e;
   font-weight: 600;
-  font-size: 13px; /* Ukuran font sedikit disesuaikan agar pas di 4 kolom */
+  font-size: 13px; 
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   transition: background-color 0.2s;
 }
