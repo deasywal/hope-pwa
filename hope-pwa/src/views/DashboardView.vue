@@ -52,7 +52,7 @@ const tanggalHariIni = 'Senin, 28 September 2026'
         <span class="stat-value">Rp 0</span>
       </div>
     </div>
-    
+
   </div>
 </template>
 
@@ -131,7 +131,7 @@ const tanggalHariIni = 'Senin, 28 September 2026'
 .menu-utama-title {
   font-size: 15px;
   font-weight: bold;
-  color: #34495e;
+  color: #3c5369;
   margin-bottom: 10px;
 }
 
