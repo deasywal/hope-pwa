@@ -1,162 +1,505 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 
-// Variabel untuk nama Brand dan informasi user 
-const brandName = ref('Nama Usaha')
-const ownerEmail = ref('')
+const router = useRouter()
+const showProfileMenu = ref(false)
+const showProfileModal = ref(false)
+const currentDate = ref('')
+const selectedDate = ref('')
+const totalPemasukan = ref(0)
+const totalKeuntungan = ref(0)
+const totalModal = ref(0)
+const hasTransactions = ref(false)
+
+const brandName = ref(localStorage.getItem('umkmBrandName') || 'Bananif')
+const phoneNum = ref(localStorage.getItem('umkmPhone') || '')
+
+const editForm = ref({
+  brandName: brandName.value,
+  phone: phoneNum.value,
+  password: ''
+})
 
 onMounted(() => {
-  // Data dari localStorage yang disimpan saat Register
-  const savedData = localStorage.getItem('registeredAccount')
-  if (savedData) {
-    const account = JSON.parse(savedData)
-    brandName.value = account.brandName || 'Nama Usaha'
-    ownerEmail.value = account.email || ''
+  const today = new Date()
+  const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
+  currentDate.value = today.toLocaleDateString('id-ID', options)
+  selectedDate.value = today.toISOString().split('T')[0]
+
+  const savedTransactions = localStorage.getItem('transactionsList')
+  if (savedTransactions) {
+    const transactions = JSON.parse(savedTransactions)
+    if (transactions.length > 0) {
+      hasTransactions.value = true
+      totalPemasukan.value = transactions.reduce((acc, curr) => acc + (curr.total || 0), 0)
+      totalKeuntungan.value = totalPemasukan.value * 0.3
+      totalModal.value = totalPemasukan.value * 0.7
+    }
   }
 })
 
-// Tanggal hari ini
-const tanggalHariIni = 'Senin, 28 September 2026'
+const toggleProfileMenu = () => {
+  showProfileMenu.value = !showProfileMenu.value
+}
+
+const openProfileModal = () => {
+  editForm.value.brandName = brandName.value
+  editForm.value.phone = phoneNum.value
+  showProfileMenu.value = false
+  showProfileModal.value = true
+}
+
+const saveProfileChanges = () => {
+  brandName.value = editForm.value.brandName
+  phoneNum.value = editForm.value.phone
+  
+  localStorage.setItem('umkmBrandName', brandName.value)
+  localStorage.setItem('umkmPhone', phoneNum.value)
+  if (editForm.value.password) {
+    localStorage.setItem('umkmPassword', editForm.value.password)
+    alert('Password berhasil diperbarui!')
+  }
+
+  showProfileModal.value = false
+  alert('Informasi usaha berhasil diperbarui!')
+}
+
+const onDateChange = (event) => {
+  const chosen = new Date(event.target.value)
+  const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
+  currentDate.value = chosen.toLocaleDateString('id-ID', options)
+}
+
+const logout = () => {
+  alert('Berhasil keluar akun.')
+  router.push('/login')
+}
 </script>
 
 <template>
   <div class="dashboard-container">
-    
-    <!-- Bagian Header: Halo & Nama Usaha -->
-    <div class="header-card">
-      <h2 class="welcome-title">Halo, {{ brandName }}</h2>
-      <p class="sub-text">Pemilik UMKM</p>
-    </div>
+    <!-- Header Sejajar (Sapaan Kiri & Menu Kanan) -->
+    <header class="app-header">
+      <div class="welcome-header-text">
+        <h2>Halo, Pemilik UMKM {{ brandName }}</h2>
+        <p>Semangat terus mengembangkan usahamu!</p>
+      </div>
 
-    <!-- Tanggal -->
-    <div class="date-text">
-      {{ tanggalHariIni }}
-    </div>
+      <div class="profile-wrapper">
+        <button @click="toggleProfileMenu" class="profile-btn">
+          <span>Menu</span>
+          <span class="dropdown-arrow">▼</span>
+        </button>
 
-    <!-- Ringkasan Keuangan (Grid 2x2) -->
-    <div class="stats-grid">
-      <div class="stat-box">
-        <span class="stat-label">Pemasukan Hari Ini</span>
-        <span class="stat-value">Rp 0</span>
+        <div v-if="showProfileMenu" class="profile-dropdown">
+          <button @click="openProfileModal" class="dropdown-item">Pengaturan Akun</button>
+          <button @click="logout" class="dropdown-item logout">Keluar</button>
+        </div>
       </div>
-      <div class="stat-box">
-        <span class="stat-label">Pengeluaran Hari Ini</span>
-        <span class="stat-value">Rp 0</span>
+    </header>
+
+    <!-- Kotak Tanggal dengan Tombol Ubah Tanggal di Kanan -->
+    <section class="date-card">
+      <div class="date-content">
+        <span class="date-title">📅 Tanggal:</span>
+        <span class="date-value">{{ currentDate }}</span>
       </div>
-      <div class="stat-box">
-        <span class="stat-label">Keuntungan</span>
-        <span class="stat-value">Rp 0</span>
+      <div class="date-picker-btn-wrapper">
+        <button class="date-btn">Ubah Tanggal</button>
+        <input 
+          type="date" 
+          v-model="selectedDate" 
+          @change="onDateChange" 
+          class="date-input-overlay" 
+        />
       </div>
-      <div class="stat-box">
-        <span class="stat-label">Modal</span>
-        <span class="stat-value">Rp 0</span>
+    </section>
+
+    <!-- Grafik Statistik Penjualan -->
+    <section class="card stats-section">
+      <div class="stats-header">
+        <h3>Statistik Penjualan (7 Hari Terakhir)</h3>
+      </div>
+
+      <div v-if="!hasTransactions" class="empty-chart">
+        <div class="empty-chart-bars">
+          <div class="bar placeholder" style="height: 20%;"></div>
+          <div class="bar placeholder" style="height: 35%;"></div>
+          <div class="bar placeholder" style="height: 25%;"></div>
+          <div class="bar placeholder" style="height: 50%;"></div>
+          <div class="bar placeholder" style="height: 40%;"></div>
+          <div class="bar placeholder" style="height: 60%;"></div>
+          <div class="bar placeholder" style="height: 30%;"></div>
+        </div>
+        <p class="empty-text">Belum ada data penjualan. Grafik akan naik otomatis saat ada transaksi.</p>
+      </div>
+
+      <div v-else class="active-chart">
+        <p class="active-text">Grafik Penjualan Aktif</p>
+      </div>
+    </section>
+
+    <!-- Kartu Informasi Keuangan (Grid 2x2) -->
+    <section class="financial-grid">
+      <div class="card info-card">
+        <span class="card-title">Pemasukan Hari Ini</span>
+        <h4 class="card-value">Rp {{ totalPemasukan.toLocaleString() }}</h4>
+        <span class="card-trend up">Dari transaksi terbaru</span>
+      </div>
+
+      <div class="card info-card">
+        <span class="card-title">Pengeluaran Hari Ini</span>
+        <h4 class="card-value">Rp 0</h4>
+        <span class="card-trend">Belum ada pengeluaran</span>
+      </div>
+
+      <div class="card info-card">
+        <span class="card-title">Keuntungan</span>
+        <h4 class="card-value">Rp {{ totalKeuntungan.toLocaleString() }}</h4>
+        <span class="card-trend up">Estimasi bersih</span>
+      </div>
+
+      <div class="card info-card">
+        <span class="card-title">Modal</span>
+        <h4 class="card-value">Rp {{ totalModal.toLocaleString() }}</h4>
+        <span class="card-trend">Dari produk</span>
+      </div>
+    </section>
+
+    <!-- Modal Pengaturan Akun -->
+    <div v-if="showProfileModal" class="modal-overlay">
+      <div class="modal-content">
+        <h3>Pengaturan UMKM & Profil</h3>
+        
+        <div class="input-group">
+          <label>Nama Usaha / Brand</label>
+          <input v-model="editForm.brandName" type="text" placeholder="Contoh: Bananif" />
+        </div>
+
+        <div class="input-group">
+          <label>Nomor Telepon / WhatsApp</label>
+          <input v-model="editForm.phone" type="text" placeholder="Contoh: 081234567890" />
+        </div>
+
+        <div class="input-group">
+          <label>Password Baru (Opsional)</label>
+          <input v-model="editForm.password" type="password" placeholder="Kosongkan jika tidak diubah" />
+        </div>
+
+        <div class="modal-actions">
+          <button @click="showProfileModal = false" class="btn-cancel">Batal</button>
+          <button @click="saveProfileChanges" class="btn-save">Simpan</button>
+        </div>
       </div>
     </div>
-
   </div>
 </template>
 
 <style scoped>
 .dashboard-container {
-  padding: 24px;
-  background-color: #f4f7f6;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  padding: 16px;
+  padding-bottom: 90px;
   font-family: sans-serif;
+  background-color: #f8f9fa;
   box-sizing: border-box;
 }
 
-/* Kartu Header */
-.header-card {
-  background: #ffffff;
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
 }
 
-.welcome-title {
-  font-size: 20px;
-  font-weight: bold;
-  color: #2c3e50;
+.welcome-header-text h2 {
   margin: 0 0 4px 0;
+  font-size: 16px;
+  color: #2f3640;
 }
 
-.sub-text {
+.welcome-header-text p {
+  margin: 0;
+  font-size: 12px;
+  color: #718093;
+}
+
+.profile-wrapper {
+  position: relative;
+}
+
+.profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+  border: 1px solid #dcdde1;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  color: #2f3640;
+}
+
+.dropdown-arrow {
+  font-size: 10px;
+  color: #718093;
+}
+
+.profile-dropdown {
+  position: absolute;
+  right: 0;
+  top: 40px;
+  background: #ffffff;
+  border: 1px solid #dcdde1;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  width: 150px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.dropdown-item {
+  width: 100%;
+  padding: 10px 14px;
+  text-align: left;
+  background: none;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  color: #2f3640;
+  font-weight: bold;
+  border-bottom: 1px solid #f1f2f6;
+}
+
+.dropdown-item:hover {
+  background-color: #f1f2f6;
+}
+
+.dropdown-item.logout {
+  color: #e74c3c;
+  border-bottom: none;
+}
+
+/* Kotak Tanggal & Tombol Ubah Tanggal di Kanan */
+.date-card {
+  background: #ffffff;
+  border: 1px solid #dcdde1;
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+
+.date-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.date-title {
   font-size: 13px;
-  color: #7f8c8d;
+  color: #718093;
+  font-weight: bold;
+}
+
+.date-value {
+  font-size: 13px;
+  font-weight: bold;
+  color: #2f3640;
+}
+
+.date-picker-btn-wrapper {
+  position: relative;
+}
+
+.date-btn {
+  background: #f1f2f6;
+  border: 1px solid #dcdde1;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: bold;
+  color: #2f3640;
+  cursor: pointer;
+  pointer-events: none; /* Klik tembus ke input date di atasnya */
+}
+
+.date-input-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid #dcdde1;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+
+.stats-header h3 {
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  color: #2f3640;
+}
+
+.empty-chart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 15px 0;
+}
+
+.empty-chart-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 12px;
+  height: 60px;
+  width: 100%;
+  margin-bottom: 12px;
+  border-bottom: 1px dashed #dcdde1;
+  padding-bottom: 4px;
+}
+
+.bar.placeholder {
+  width: 16px;
+  background-color: #dfe4ea;
+  border-radius: 4px 4px 0 0;
+}
+
+.empty-text {
+  font-size: 11px;
+  color: #718093;
+  text-align: center;
   margin: 0;
 }
 
-.date-text {
-  font-size: 13px;
-  color: #95a5a6;
-  padding-left: 4px;
-}
-
-/* Grid Keuangan */
-.stats-grid {
+.financial-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
 }
 
-.stat-box {
-  background: #ffffff;
-  padding: 16px;
-  border-radius: 10px;
-  box-shadow: 1px 4px rgba(0, 0, 0, 0.03);
+.info-card {
+  margin-bottom: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  justify-content: space-between;
 }
 
-.stat-label {
-  font-size: 12px;
-  color: #7f8c8d;
-}
-
-.stat-value {
-  font-size: 16px;
+.card-title {
+  font-size: 11px;
+  color: #718093;
   font-weight: bold;
-  color: #2c3e50;
+  margin-bottom: 6px;
 }
 
-/* Navbar 4 Menu */
-.menu-utama-section {
-  margin-top: 8px;
-}
-
-.menu-utama-title {
+.card-value {
+  margin: 0 0 6px 0;
   font-size: 15px;
+  font-weight: 800;
+  color: #2f3640;
+}
+
+.card-trend {
+  font-size: 10px;
+  color: #718093;
+}
+
+.card-trend.up {
+  color: #2ed573;
   font-weight: bold;
-  color: #3c5369;
-  margin-bottom: 10px;
 }
 
-.menu-grid {
-  display: flex;
-  gap: 8px; 
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
   width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+  box-sizing: border-box;
 }
 
-.menu-item {
-  flex: 1;
+.modal-content {
   background: #ffffff;
-  padding: 14px 6px; 
-  border-radius: 8px;
-  text-align: center;
-  text-decoration: none;
-  color: #34495e;
-  font-weight: 600;
-  font-size: 13px; 
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  transition: background-color 0.2s;
+  padding: 20px;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
 }
 
-.menu-item:hover {
-  background-color: #ecf0f1;
-  color: #2980b9;
+.modal-content h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  color: #2f3640;
+}
+
+.input-group {
+  margin-bottom: 12px;
+}
+
+.input-group label {
+  display: block;
+  font-size: 11px;
+  color: #718093;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #dcdde1;
+  border-radius: 6px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.btn-cancel {
+  background: #f1f2f6;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #718093;
+  cursor: pointer;
+}
+
+.btn-save {
+  background: #2f3640;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #ffffff;
+  cursor: pointer;
 }
 </style>
