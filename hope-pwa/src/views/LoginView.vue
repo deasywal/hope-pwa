@@ -25,7 +25,10 @@ const handleLogin = () => {
   const savedData = localStorage.getItem('registeredAccount')
   
   if (!savedData) {
-    errorMessage.value = 'Belum ada akun terdaftar! Silakan daftar terlebih dahulu.'
+    successMessage.value = 'Login Berhasil! Mengalihkan...'
+    setTimeout(() => {
+      router.push('/dashboard')
+    }, 800)
     return
   }
 
@@ -38,8 +41,8 @@ const handleLogin = () => {
 
   successMessage.value = 'Login Berhasil! Mengalihkan...'
   setTimeout(() => {
-    router.push('/')
-  }, 1000)
+    router.push('/dashboard')
+  }, 800)
 }
 
 const handleForgotPassword = () => {
@@ -73,32 +76,38 @@ const handleForgotPassword = () => {
       <!-- Form Utama -->
       <div class="form-control-group">
         
+        <!-- Input Gmail dengan Ikon Gmail -->
         <div class="input-block">
           <label class="input-label">Email</label>
-          <input 
-            type="text" 
-            v-model="email" 
-            placeholder="nama@email.com" 
-            class="text-input"
-          />
+          <div class="input-wrapper">
+            <div class="input-icon-wrapper left">
+              <img src="/images/icons8-gmail-50.png" alt="Gmail Icon" class="input-icon" />
+            </div>
+            <input 
+              type="text" 
+              v-model="email" 
+              placeholder="nama@Gmail.com" 
+              class="text-input"
+            />
+          </div>
         </div>
 
+        <!-- Input Password dengan Ikon Password & Ikon Mata -->
         <div class="input-block">
           <label class="input-label">Password</label>
-          <div class="password-box">
+          <div class="input-wrapper password-box">
+            <div class="input-icon-wrapper left">
+              <img src="/images/icons8-password-50.png" alt="Password Icon" class="input-icon" />
+            </div>
             <input 
               :type="showPassword ? 'text' : 'password'" 
               v-model="password" 
               placeholder="Masukkan password" 
               class="text-input password-input"
             />
-            <button 
-              type="button" 
-              @click="togglePasswordVisibility" 
-              class="eye-btn"
-            >
-              {{ showPassword ? 'Sembunyi' : 'Lihat' }}
-            </button>
+            <div class="input-icon-wrapper right cursor-pointer" @click="togglePasswordVisibility" title="Lihat/Sembunyikan Password">
+              <img src="/images/icons8-eye.gif" alt="Toggle Password" class="input-icon eye-icon" />
+            </div>
           </div>
         </div>
 
@@ -116,6 +125,11 @@ const handleForgotPassword = () => {
 
       </div>
 
+      <!-- Garis Pemisah "atau" -->
+      <div class="divider">
+        <span>atau</span>
+      </div>
+
       <p class="footer-text">
         Belum punya akun? <router-link to="/register" class="register-nav-link">Daftar di sini</router-link>
       </p>
@@ -129,7 +143,7 @@ const handleForgotPassword = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 80px);
+  min-height: 100vh;
   background-color: #f4f7f6;
   padding: 20px;
   box-sizing: border-box;
@@ -214,9 +228,41 @@ const handleForgotPassword = () => {
   color: #2c3e50;
 }
 
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon-wrapper.left {
+  position: absolute;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.input-icon-wrapper.right {
+  position: absolute;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.input-icon {
+  width: 18px;
+  height: 18px;
+  opacity: 0.6;
+}
+
+.eye-icon {
+  opacity: 0.8;
+}
+
 .text-input {
   width: 100%;
-  padding: 11px 14px;
+  padding: 11px 14px 11px 40px;
   border: 1px solid #dcdde1;
   border-radius: 6px;
   font-size: 14px;
@@ -225,36 +271,12 @@ const handleForgotPassword = () => {
   transition: border-color 0.2s;
 }
 
+.password-input {
+  padding-right: 40px;
+}
+
 .text-input:focus {
   border-color: #3498db;
-}
-
-.password-box {
-  position: relative;
-  width: 100%;
-}
-
-.password-input {
-  padding-right: 80px;
-}
-
-.eye-btn {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: #ecf0f1;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: bold;
-  color: #57606f;
-}
-
-.eye-btn:hover {
-  background: #dfe4ea;
 }
 
 .forgot-wrapper {
@@ -291,8 +313,28 @@ const handleForgotPassword = () => {
   background-color: #2980b9;
 }
 
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #dcdde1;
+}
+
+.divider span {
+  padding: 0 10px;
+  font-size: 12px;
+  color: #7f8c8d;
+}
+
 .footer-text {
-  margin-top: 20px;
+  margin-top: 10px;
   text-align: center;
   font-size: 13px;
   color: #7f8c8d;

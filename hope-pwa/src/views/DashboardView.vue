@@ -282,7 +282,7 @@ const logout = () => {
   border-bottom: none;
 }
 
-/* Kotak Tanggal & Tombol Ubah Tanggal di Kanan */
+/* Kotak Tanggal & Tombol Ubah Tanggal */
 .date-card {
   background: #ffffff;
   border: 1px solid #dcdde1;

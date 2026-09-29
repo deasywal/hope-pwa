@@ -9,7 +9,8 @@ import RegisterView from '../views/RegisterView.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    { path: '/', name: 'dashboard', component: DashboardView },
+    { path: '/', name: 'home', component: DashboardView },
+    { path: '/dashboard', name: 'dashboard', component: DashboardView }, // <-- Ditambahkan agar sinkron
     { path: '/produk', name: 'produk', component: ProdukView },
     { path: '/transaksi', name: 'transaksi', component: TransaksiView },
     { path: '/laporan', name: 'laporan', component: LaporanView },
