@@ -147,28 +147,40 @@ const logout = () => {
       </div>
     </section>
 
-    <!-- Kartu Informasi Keuangan -->
+    <!-- Kartu Informasi Keuangan dengan Ikon -->
     <section class="financial-grid">
       <div class="card info-card">
-        <span class="card-title">Pemasukan Hari Ini</span>
+        <div class="card-header-flex">
+          <span class="card-title">Pemasukan Hari Ini</span>
+          <img src="/images/icons8-money-50.png" alt="Pemasukan" class="card-icon" />
+        </div>
         <h4 class="card-value">Rp {{ totalPemasukan.toLocaleString() }}</h4>
         <span class="card-trend up">Dari transaksi terbaru</span>
       </div>
 
       <div class="card info-card">
-        <span class="card-title">Pengeluaran Hari Ini</span>
+        <div class="card-header-flex">
+          <span class="card-title">Pengeluaran Hari Ini</span>
+          <img src="/images/icons8-bill-50.png" alt="Pengeluaran" class="card-icon" />
+        </div>
         <h4 class="card-value">Rp 0</h4>
         <span class="card-trend">Belum ada pengeluaran</span>
       </div>
 
       <div class="card info-card">
-        <span class="card-title">Keuntungan</span>
+        <div class="card-header-flex">
+          <span class="card-title">Keuntungan</span>
+          <img src="/images/icons8-profit-50.png" alt="Keuntungan" class="card-icon" />
+        </div>
         <h4 class="card-value">Rp {{ totalKeuntungan.toLocaleString() }}</h4>
         <span class="card-trend up">Estimasi bersih</span>
       </div>
 
       <div class="card info-card">
-        <span class="card-title">Modal</span>
+        <div class="card-header-flex">
+          <span class="card-title">Modal</span>
+          <img src="/images/icons8-stock-50.png" alt="Modal" class="card-icon" />
+        </div>
         <h4 class="card-value">Rp {{ totalModal.toLocaleString() }}</h4>
         <span class="card-trend">Dari produk</span>
       </div>
@@ -418,11 +430,25 @@ const logout = () => {
   justify-content: space-between;
 }
 
+.card-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
 .card-title {
   font-size: 11px;
   color: #718093;
   font-weight: bold;
-  margin-bottom: 6px;
+  margin-bottom: 0;
+}
+
+.card-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  opacity: 0.8;
 }
 
 .card-value {
