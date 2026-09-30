@@ -76,7 +76,7 @@ const handleForgotPassword = () => {
       <!-- Form Utama -->
       <div class="form-control-group">
         
-        <!-- Input Gmail dengan Ikon Gmail -->
+        <!-- Input Gmail -->
         <div class="input-block">
           <label class="input-label">Email</label>
           <div class="input-wrapper">
@@ -92,7 +92,7 @@ const handleForgotPassword = () => {
           </div>
         </div>
 
-        <!-- Input Password dengan Ikon Password & Ikon Mata -->
+        <!-- Input Password -->
         <div class="input-block">
           <label class="input-label">Password</label>
           <div class="input-wrapper password-box">

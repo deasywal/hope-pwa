@@ -27,15 +27,19 @@ onMounted(() => {
   currentDate.value = today.toLocaleDateString('id-ID', options)
   selectedDate.value = today.toISOString().split('T')[0]
 
-  const savedTransactions = localStorage.getItem('transactionsList')
-  if (savedTransactions) {
-    const transactions = JSON.parse(savedTransactions)
-    if (transactions.length > 0) {
-      hasTransactions.value = true
-      totalPemasukan.value = transactions.reduce((acc, curr) => acc + (curr.total || 0), 0)
-      totalKeuntungan.value = totalPemasukan.value * 0.3
-      totalModal.value = totalPemasukan.value * 0.7
+  try {
+    const savedTransactions = localStorage.getItem('transactionsList')
+    if (savedTransactions) {
+      const transactions = JSON.parse(savedTransactions)
+      if (Array.isArray(transactions) && transactions.length > 0) {
+        hasTransactions.value = true
+        totalPemasukan.value = transactions.reduce((acc, curr) => acc + (curr.total || 0), 0)
+        totalKeuntungan.value = totalPemasukan.value * 0.3
+        totalModal.value = totalPemasukan.value * 0.7
+      }
     }
+  } catch (e) {
+    console.error('Gagal memuat data transaksi:', e)
   }
 })
 
@@ -58,7 +62,6 @@ const saveProfileChanges = () => {
   localStorage.setItem('umkmPhone', phoneNum.value)
   if (editForm.value.password) {
     localStorage.setItem('umkmPassword', editForm.value.password)
-    alert('Password berhasil diperbarui!')
   }
 
   showProfileModal.value = false
@@ -72,7 +75,7 @@ const onDateChange = (event) => {
 }
 
 const logout = () => {
-  alert('Berhasil keluar akun.')
+  localStorage.removeItem('isLoggedIn')
   router.push('/login')
 }
 </script>
@@ -99,21 +102,25 @@ const logout = () => {
       </div>
     </header>
 
-    <!-- Kotak Tanggal dengan Tombol Ubah Tanggal di Kanan -->
+    <!-- Kotak Tanggal dengan Tombol Ikon -->
     <section class="date-card">
       <div class="date-content">
-        <span class="date-title">📅 Tanggal:</span>
+        <span class="date-title">Tanggal:</span>
         <span class="date-value">{{ currentDate }}</span>
       </div>
-      <div class="date-picker-btn-wrapper">
-        <button class="date-btn">Ubah Tanggal</button>
-        <input 
-          type="date" 
-          v-model="selectedDate" 
-          @change="onDateChange" 
-          class="date-input-overlay" 
-        />
+      
+      <!-- Tombol Ikon di Pojok Kanan -->
+      <div class="date-icon-btn">
+        <img src="/images/icons8-date-50.png" alt="Date Icon" class="date-icon" />
       </div>
+
+      <input 
+        type="date" 
+        v-model="selectedDate" 
+        @change="onDateChange" 
+        class="date-input-overlay" 
+        title="Klik untuk ubah tanggal"
+      />
     </section>
 
     <!-- Grafik Statistik Penjualan -->
@@ -140,7 +147,7 @@ const logout = () => {
       </div>
     </section>
 
-    <!-- Kartu Informasi Keuangan (Grid 2x2) -->
+    <!-- Kartu Informasi Keuangan -->
     <section class="financial-grid">
       <div class="card info-card">
         <span class="card-title">Pemasukan Hari Ini</span>
@@ -174,7 +181,7 @@ const logout = () => {
         
         <div class="input-group">
           <label>Nama Usaha / Brand</label>
-          <input v-model="editForm.brandName" type="text" placeholder="Contoh: Bananif" />
+          <input v-model="editForm.brandName" type="text" placeholder="Contoh: HOPE Elektronik" />
         </div>
 
         <div class="input-group">
@@ -282,23 +289,31 @@ const logout = () => {
   border-bottom: none;
 }
 
-/* Kotak Tanggal & Tombol Ubah Tanggal */
+/* Icon Tanggal Guys */
 .date-card {
   background: #ffffff;
   border: 1px solid #dcdde1;
   border-radius: 10px;
   padding: 12px 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  position: relative;
+  cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  overflow: hidden;
+}
+
+.date-card:hover {
+  background-color: #f8f9fa;
 }
 
 .date-content {
   display: flex;
   align-items: center;
   gap: 8px;
+  pointer-events: none;
 }
 
 .date-title {
@@ -313,22 +328,25 @@ const logout = () => {
   color: #2f3640;
 }
 
-.date-picker-btn-wrapper {
-  position: relative;
-}
-
-.date-btn {
+.date-icon-btn {
   background: #f1f2f6;
   border: 1px solid #dcdde1;
-  padding: 6px 12px;
+  padding: 6px;
   border-radius: 6px;
-  font-size: 11px;
-  font-weight: bold;
-  color: #2f3640;
-  cursor: pointer;
-  pointer-events: none; /* Klik tembus ke input date di atasnya */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
 }
 
+.date-icon {
+  width: 18px;
+  height: 18px;
+  opacity: 0.8;
+  object-fit: contain;
+}
+
+/* Buat Ganti Tanggal Guys */
 .date-input-overlay {
   position: absolute;
   top: 0;
@@ -337,6 +355,7 @@ const logout = () => {
   height: 100%;
   opacity: 0;
   cursor: pointer;
+  z-index: 2;
 }
 
 .card {
