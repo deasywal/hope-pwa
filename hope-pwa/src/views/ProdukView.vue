@@ -154,7 +154,7 @@ const deleteProduct = (id) => {
   <div class="page-wrapper">
     <!-- Header Nav & Tombol Filter -->
     <div class="header-nav">
-      <h3 class="page-title">← Tambah Produk</h3>
+      <h3 class="page-title">Produk</h3>
       <div class="header-actions">
         <div class="filter-wrapper">
           <button @click="showFilterDropdown = !showFilterDropdown" class="filter-btn" title="Filter Kategori">

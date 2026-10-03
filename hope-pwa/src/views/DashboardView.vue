@@ -102,25 +102,25 @@ const logout = () => {
       </div>
     </header>
 
-    <!-- Kotak Tanggal dengan Tombol Ikon -->
+    <!-- Kotak Tanggal dengan Tombol Ikon (Hanya area ikon yang interaktif) -->
     <section class="date-card">
       <div class="date-content">
         <span class="date-title">Tanggal:</span>
         <span class="date-value">{{ currentDate }}</span>
       </div>
       
-      <!-- Tombol Ikon di Pojok Kanan -->
-      <div class="date-icon-btn">
-        <img src="/images/icons8-date-50.png" alt="Date Icon" class="date-icon" />
+      <!-- Bungkus Ikon Tanggal dengan Wrapper agar input transparan hanya di area ini -->
+      <div class="date-icon-wrapper" title="Klik untuk ubah tanggal">
+        <div class="date-icon-btn">
+          <img src="/images/icons8-date-50.png" alt="Date Icon" class="date-icon" />
+        </div>
+        <input 
+          type="date" 
+          v-model="selectedDate" 
+          @change="onDateChange" 
+          class="date-input-overlay" 
+        />
       </div>
-
-      <input 
-        type="date" 
-        v-model="selectedDate" 
-        @change="onDateChange" 
-        class="date-input-overlay" 
-        title="Klik untuk ubah tanggal"
-      />
     </section>
 
     <!-- Grafik Statistik Penjualan -->
@@ -301,7 +301,7 @@ const logout = () => {
   border-bottom: none;
 }
 
-/* Icon Tanggal Guys */
+/* Kotak Tanggal */
 .date-card {
   background: #ffffff;
   border: 1px solid #dcdde1;
@@ -309,23 +309,15 @@ const logout = () => {
   padding: 12px 16px;
   margin-bottom: 16px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-  position: relative;
-  cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  overflow: hidden;
-}
-
-.date-card:hover {
-  background-color: #f8f9fa;
 }
 
 .date-content {
   display: flex;
   align-items: center;
   gap: 8px;
-  pointer-events: none;
 }
 
 .date-title {
@@ -340,6 +332,15 @@ const logout = () => {
   color: #2f3640;
 }
 
+/* Wrapper Khusus Area Ikon Saja yang Interaktif & Ada Hover */
+.date-icon-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
 .date-icon-btn {
   background: #f1f2f6;
   border: 1px solid #dcdde1;
@@ -348,7 +349,12 @@ const logout = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  pointer-events: none;
+  transition: background-color 0.2s ease;
+}
+
+/* Efek hover hanya aktif ketika kursor diarahkan ke area ikon tanggal */
+.date-icon-wrapper:hover .date-icon-btn {
+  background-color: #dfe4ea;
 }
 
 .date-icon {
@@ -358,7 +364,7 @@ const logout = () => {
   object-fit: contain;
 }
 
-/* Buat Ganti Tanggal Guys */
+/* Input date transparan hanya menutupi area tombol ikon di ujung */
 .date-input-overlay {
   position: absolute;
   top: 0;
