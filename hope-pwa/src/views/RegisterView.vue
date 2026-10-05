@@ -11,19 +11,16 @@ const confirmPassword = ref('')
 const errorMessage = ref('')
 const successMessage = ref('')
 
-// Tombol lihat/sembunyi password utama
 const showPassword = ref(false)
 const togglePasswordVisibility = () => {
   showPassword.value = !showPassword.value
 }
 
-// Tombol lihat/sembunyi konfirmasi password
 const showConfirmPassword = ref(false)
 const toggleConfirmPasswordVisibility = () => {
   showConfirmPassword.value = !showConfirmPassword.value
 }
 
-// Fungsi validasi format email
 const isValidEmail = (emailStr) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   return emailRegex.test(emailStr)
@@ -33,31 +30,26 @@ const handleRegister = () => {
   errorMessage.value = ''
   successMessage.value = ''
 
-  // 1. Validasi semua kolom wajib diisi
   if (!ownerName.value.trim() || !brandName.value.trim() || !email.value.trim() || !password.value.trim() || !confirmPassword.value.trim()) {
     errorMessage.value = 'Semua kolom wajib diisi!'
     return
   }
 
-  // 2. Validasi format email
   if (!isValidEmail(email.value)) {
     errorMessage.value = 'Format email tidak valid! Masukkan email yang benar.'
     return
   }
 
-  // 3. Validasi panjang password minimal 6 karakter
   if (password.value.length < 6) {
     errorMessage.value = 'Password terlalu pendek! Minimal harus 6 karakter.'
     return
   }
 
-  // 4. Validasi apakah password dan konfirmasi password sama (*match*)
   if (password.value !== confirmPassword.value) {
     errorMessage.value = 'Konfirmasi password tidak cocok! Silakan periksa kembali.'
     return
   }
 
-  // Simpan data akun ke localStorage
   const accountData = {
     ownerName: ownerName.value.trim(),
     brandName: brandName.value.trim(),
@@ -65,8 +57,6 @@ const handleRegister = () => {
     password: password.value
   }
   localStorage.setItem('registeredAccount', JSON.stringify(accountData))
-
-  // Simpan juga nama brand agar sinkron dengan Dashboard
   localStorage.setItem('umkmBrandName', brandName.value.trim())
 
   successMessage.value = 'Akun berhasil dibuat! Mengalihkan ke halaman login...'
@@ -90,13 +80,12 @@ const handleRegister = () => {
       <h2 class="form-title">Buat Akun HOPE</h2>
       <p class="form-desc">Kelola penjualan dan keuangan usaha dengan lebih mudah.</p>
 
-      <!-- Pesan Peringatan atau Sukses -->
       <div v-if="errorMessage" class="alert-box error">{{ errorMessage }}</div>
       <div v-if="successMessage" class="alert-box success">{{ successMessage }}</div>
 
       <div class="form-control-group">
         
-        <!-- Input Nama Pemilik dengan Ikon Customer -->
+        <!-- Input Nama Pemilik -->
         <div class="input-block">
           <label class="input-label">Nama Pemilik</label>
           <div class="input-wrapper">
@@ -112,7 +101,7 @@ const handleRegister = () => {
           </div>
         </div>
 
-        <!-- Input Nama Brand / Usaha dengan Ikon Market -->
+        <!-- Input Nama Usaha -->
         <div class="input-block">
           <label class="input-label">Nama Usaha / Brand</label>
           <div class="input-wrapper">
@@ -128,7 +117,7 @@ const handleRegister = () => {
           </div>
         </div>
 
-        <!-- Input Email dengan Ikon Gmail -->
+        <!-- Input Email -->
         <div class="input-block">
           <label class="input-label">Email</label>
           <div class="input-wrapper">
@@ -144,7 +133,7 @@ const handleRegister = () => {
           </div>
         </div>
 
-        <!-- Input Password dengan Ikon Password & Tombol Lihat -->
+        <!-- Input Password -->
         <div class="input-block">
           <label class="input-label">Password</label>
           <div class="input-wrapper password-box">
@@ -158,7 +147,7 @@ const handleRegister = () => {
               class="text-input password-input"
             />
             <div class="input-icon-wrapper right cursor-pointer" @click="togglePasswordVisibility" title="Lihat/Sembunyikan Password">
-              <img src="/images/icons8-eye.gif" alt="Toggle Password" class="input-icon eye-icon" />
+              <img src="/images/icons8-eye-50.png" alt="Toggle Password" class="input-icon eye-icon" />
             </div>
           </div>
         </div>
@@ -177,7 +166,7 @@ const handleRegister = () => {
               class="text-input password-input"
             />
             <div class="input-icon-wrapper right cursor-pointer" @click="toggleConfirmPasswordVisibility" title="Lihat/Sembunyikan Password">
-              <img src="/images/icons8-eye.gif" alt="Toggle Password" class="input-icon eye-icon" />
+              <img src="/images/icons8-eye-50.png" alt="Toggle Password" class="input-icon eye-icon" />
             </div>
           </div>
         </div>
@@ -329,16 +318,32 @@ const handleRegister = () => {
   border-radius: 6px;
   font-size: 14px;
   box-sizing: border-box;
-  outline: none;
-  transition: border-color 0.2s;
 }
 
 .password-input {
+  padding-left: 40px;
   padding-right: 40px;
+}
+
+/* Mematikan iko bawaan browser*/
+.password-input::-ms-reveal,
+.password-input::-ms-clear {
+  display: none;
+}
+
+.password-input::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  position: absolute;
+  right: 0;
 }
 
 .text-input:focus {
   border-color: #27ae60;
+  outline: none;
+}
+
+.cursor-pointer {
+  cursor: pointer;
 }
 
 .register-btn {

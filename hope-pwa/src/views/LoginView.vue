@@ -106,7 +106,7 @@ const handleForgotPassword = () => {
               class="text-input password-input"
             />
             <div class="input-icon-wrapper right cursor-pointer" @click="togglePasswordVisibility" title="Lihat/Sembunyikan Password">
-              <img src="/images/icons8-eye.gif" alt="Toggle Password" class="input-icon eye-icon" />
+              <img src="/images/icons8-eye-50.png" alt="Toggle Password" class="input-icon eye-icon" />
             </div>
           </div>
         </div>
@@ -275,8 +275,24 @@ const handleForgotPassword = () => {
   padding-right: 40px;
 }
 
+/* Mematikan ikon mata bawaan browser agar tidak dobel */
+.password-input::-ms-reveal,
+.password-input::-ms-clear {
+  display: none;
+}
+
+.password-input::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  position: absolute;
+  right: 0;
+}
+
 .text-input:focus {
   border-color: #3498db;
+}
+
+.cursor-pointer {
+  cursor: pointer;
 }
 
 .forgot-wrapper {
