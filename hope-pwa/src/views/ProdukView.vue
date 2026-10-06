@@ -1,16 +1,29 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 
 const productList = ref([])
 const showForm = ref(false)
 const showFilterDropdown = ref(false)
 const selectedCategoryFilter = ref('')
+const editingProductId = ref(null)
+
+// Utuk HPP terperinci & hasil jadi
+const costInputMode = ref('total') 
+const productIngredients = ref([])
+
+// Daftar bahan baku & opsi tambah baru
+const ingredientOptions = ref(['Pisang', 'Terigu', 'Minyak', 'Gula', 'Telur', 'Cokelat', 'Sly/Selai', 'Standing Pouch'])
+const isAddingIngredient = ref(false)
+const newIngredientInput = ref('')
+
+const tempIngredient = ref({ name: '', quantity: '', unit: 'kg', price: '' })
+const batchOutputQty = ref(1)
 
 // Daftar pilihan kategori & varian
 const categoryOptions = ref(['Makanan', 'Minuman', 'Cemilan'])
 const variantOptions = ref(['Original', 'Coklat', 'Stroberi', 'Matcha', 'Keju'])
+const unitOptions = ref(['kg', 'gr', 'ons', 'liter', 'ml', 'pcs'])
 
-// Untuk menambahkan produk terbaru
 const isAddingCategory = ref(false)
 const newCategoryInput = ref('')
 
@@ -35,7 +48,63 @@ onMounted(() => {
   }
 })
 
-// Untuk upload gambar produk di Form Tambah
+// Fungsi handle pemilihan Nama Bahan (cek jika pilih Tambah Baru)
+const handleIngredientChange = (event) => {
+  if (event.target.value === 'ADD_NEW') {
+    isAddingIngredient.value = true
+    tempIngredient.value.name = ''
+  } else {
+    isAddingIngredient.value = false
+  }
+}
+
+// Untuk Penyimpanan Bahan Baru Ke Pilihan Dropdown
+const saveNewIngredient = () => {
+  if (newIngredientInput.value.trim() !== '') {
+    const formatted = newIngredientInput.value.trim()
+    if (!ingredientOptions.value.includes(formatted)) {
+      ingredientOptions.value.push(formatted)
+    }
+    tempIngredient.value.name = formatted
+    newIngredientInput.value = ''
+    isAddingIngredient.value = false
+  }
+}
+
+const calculatedTotalCostFromDetails = computed(() => {
+  return productIngredients.value.reduce((sum, ing) => sum + (Number(ing.price) || 0), 0)
+})
+
+const calculatedCostPerPcs = computed(() => {
+  const total = calculatedTotalCostFromDetails.value
+  const qty = Number(batchOutputQty.value) || 1
+  return Math.round(total / qty)
+})
+
+const finalCost = computed(() => {
+  if (costInputMode.value === 'detail') {
+    return calculatedCostPerPcs.value
+  }
+  return Number(String(form.value.cost || '0').replace(/\D/g, ''))
+})
+
+const addIngredientToList = () => {
+  if (!tempIngredient.value.name || !tempIngredient.value.quantity || !tempIngredient.value.price) {
+    alert('Mohon lengkapi Nama Bahan, Jumlah, dan Harga Beli!')
+    return
+  }
+  productIngredients.value.push({
+    id: Date.now(),
+    ...tempIngredient.value
+  })
+  tempIngredient.value = { name: '', quantity: '', unit: 'kg', price: '' }
+  isAddingIngredient.value = false
+}
+
+const deleteIngredient = (id) => {
+  productIngredients.value = productIngredients.value.filter(ing => ing.id !== id)
+}
+
 const handleImageUpload = (event) => {
   const file = event.target.files[0]
   if (file) {
@@ -43,7 +112,6 @@ const handleImageUpload = (event) => {
   }
 }
 
-// Mengganti gambar langsung dari daftar produk yang sudah tersimpan
 const triggerUpdateImage = (productId, event) => {
   const file = event.target.files[0]
   if (file) {
@@ -56,7 +124,6 @@ const triggerUpdateImage = (productId, event) => {
   }
 }
 
-// Untuk menyimpan katagori yang dipilih
 const handleCategoryChange = (event) => {
   if (event.target.value === 'ADD_NEW') {
     isAddingCategory.value = true
@@ -66,7 +133,6 @@ const handleCategoryChange = (event) => {
   }
 }
 
-// Untuk menyimpan Kategori Baru dari input tambahan
 const saveNewCategory = () => {
   if (newCategoryInput.value.trim() !== '') {
     const formatted = newCategoryInput.value.trim()
@@ -79,7 +145,6 @@ const saveNewCategory = () => {
   }
 }
 
-// Untuk memilih varian yang dipilih
 const handleVariantChange = (event) => {
   if (event.target.value === 'ADD_NEW') {
     isAddingVariant.value = true
@@ -89,7 +154,6 @@ const handleVariantChange = (event) => {
   }
 }
 
-// Untuk menyimpan varian terbaru
 const saveNewVariant = () => {
   if (newVariantInput.value.trim() !== '') {
     const formatted = newVariantInput.value.trim()
@@ -102,13 +166,11 @@ const saveNewVariant = () => {
   }
 }
 
-// Daftar kategori untuk filter produk
 const availableCategories = computed(() => {
   const categories = productList.value.map(p => p.category).filter(Boolean)
   return [...new Set(categories)]
 })
 
-// Filter produk berdasarkan kategori yang dipilih
 const filteredProducts = computed(() => {
   if (!selectedCategoryFilter.value) {
     return productList.value
@@ -122,32 +184,97 @@ const saveProduct = () => {
     return
   }
 
-  const newProduct = {
-    id: Date.now(),
+  const productData = {
+    id: editingProductId.value || Date.now(),
     image: form.value.image,
     name: form.value.name,
     category: form.value.category.trim() || 'Umum',
     variant: form.value.variant.trim() || 'Original',
     price: Number(String(form.value.price).replace(/\D/g, '')),
-    cost: Number(String(form.value.cost).replace(/\D/g, '')),
+    costing: {
+      mode: costInputMode.value,
+      totalCost: finalCost.value,
+      batchQty: costInputMode.value === 'detail' ? batchOutputQty.value : 1,
+      ingredients: costInputMode.value === 'detail' ? productIngredients.value : []
+    },
     stock: Number(form.value.stock) || 0,
     minStock: Number(form.value.minStock) || 0
   }
 
-  productList.value.push(newProduct)
-  localStorage.setItem('productsList', JSON.stringify(productList.value))
+  if (editingProductId.value) {
+    const index = productList.value.findIndex(p => p.id === editingProductId.value)
+    if (index !== -1) {
+      productList.value[index] = productData
+    }
+  } else {
+    productList.value.push(productData)
+  }
 
-  // Reset form dan data
+  localStorage.setItem('productsList', JSON.stringify(productList.value))
+  resetForm()
+}
+
+const resetForm = () => {
   form.value = { image: '', name: '', category: '', variant: '', price: '', cost: '', stock: '', minStock: '' }
   isAddingCategory.value = false
   isAddingVariant.value = false
   showForm.value = false
+  editingProductId.value = null
+  costInputMode.value = 'total'
+  productIngredients.value = []
+  tempIngredient.value = { name: '', quantity: '', unit: 'kg', price: '' }
+  batchOutputQty.value = 1
+  isAddingIngredient.value = false
 }
 
 const deleteProduct = (id) => {
+  if (editingProductId.value === id) {
+    alert('Sedang dalam mode edit, harap simpan atau batalkan terlebih dahulu.')
+    return
+  }
   productList.value = productList.value.filter(p => p.id !== id)
   localStorage.setItem('productsList', JSON.stringify(productList.value))
 }
+
+const editProduct = (product) => {
+  editingProductId.value = product.id
+  showForm.value = true
+  
+  form.value = {
+    image: product.image,
+    name: product.name,
+    category: product.category,
+    variant: product.variant,
+    price: product.price,
+    stock: product.stock,
+    minStock: product.minStock
+  }
+
+  if (product.costing) {
+    costInputMode.value = product.costing.mode
+    if (costInputMode.value === 'total') {
+      form.value.cost = product.costing.totalCost
+    } else {
+      productIngredients.value = product.costing.ingredients || []
+      batchOutputQty.value = product.costing.batchQty || 1
+    }
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+watch(() => form.value.price, (newValue, oldValue) => {
+  if (newValue && newValue !== oldValue) {
+    const cleanValue = String(newValue).replace(/\D/g, '')
+    form.value.price = new Intl.NumberFormat('id-ID').format(cleanValue)
+  }
+})
+
+watch(() => form.value.cost, (newValue, oldValue) => {
+  if (costInputMode.value === 'total' && newValue && newValue !== oldValue) {
+    const cleanValue = String(newValue).replace(/\D/g, '')
+    form.value.cost = new Intl.NumberFormat('id-ID').format(cleanValue)
+  }
+})
 </script>
 
 <template>
@@ -181,20 +308,22 @@ const deleteProduct = (id) => {
           </div>
         </div>
 
-        <button @click="showForm = !showForm" class="action-btn">
+        <button @click="resetForm(); showForm = !showForm" class="action-btn">
           {{ showForm ? 'Batal' : '+ Tambah Produk' }}
         </button>
       </div>
     </div>
 
-    <!-- Filter katagori -->
+    <!-- Filter kategori -->
     <div v-if="selectedCategoryFilter" class="filter-status-bar">
       <span>Menampilkan kategori: <strong>{{ selectedCategoryFilter }}</strong></span>
       <button @click="selectedCategoryFilter = ''" class="reset-filter-btn">Reset</button>
     </div>
 
-    <!-- Untuk menambahkan Produk -->
+    <!-- Form Tambah / Edit Produk -->
     <div v-if="showForm" class="card form-box">
+      <h2 class="form-header-title">{{ editingProductId ? 'Edit Produk' : 'Tambah Produk Baru' }}</h2>
+      
       <!-- Upload Gambar -->
       <div class="upload-box" @click="$refs.fileInput.click()">
         <div v-if="!form.image" class="upload-placeholder">
@@ -251,31 +380,106 @@ const deleteProduct = (id) => {
         </div>
       </div>
 
+      <!-- Pilihan Katagori Hpp -->
+      <div class="card sub-card hpp-section">
+        <label class="section-label">Modal / Biaya Produksi</label>
+        
+        <div class="hpp-radio-group">
+          <label class="radio-option">
+            <input type="radio" v-model="costInputMode" value="total" />
+            <span>Masukkan Modal Total</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" v-model="costInputMode" value="detail" />
+            <span>Modal Terperinci (Bahan Baku)</span>
+          </label>
+        </div>
+
+        <!-- Mode Total -->
+        <div v-if="costInputMode === 'total'" class="input-group mt-12">
+            <label>Jumlah Modal Total</label>
+            <input v-model="form.cost" type="text" placeholder="Rp 0" class="input-field no-spinner" />
+        </div>
+
+        <!-- Mode Terperinci -->
+        <div v-if="costInputMode === 'detail'" class="input-group mt-12 detail-box">
+          <label>Daftar Bahan Baku</label>
+          
+          <div v-if="productIngredients.length > 0" class="ingredient-table">
+            <div v-for="ing in productIngredients" :key="ing.id" class="ing-row">
+              <span><strong>{{ ing.name }}</strong> ({{ ing.quantity }} {{ ing.unit }})</span>
+              <div class="ing-right">
+                  <span>Rp {{ Number(ing.price).toLocaleString('id-ID') }}</span>
+                  <button type="button" @click="deleteIngredient(ing.id)" class="ing-delete-btn">×</button>
+              </div>
+            </div>
+            <div class="ing-total">
+                <span>Total Modal Semua Bahan:</span>
+                <strong>Rp {{ calculatedTotalCostFromDetails.toLocaleString('id-ID') }}</strong>
+            </div>
+          </div>
+
+          <!-- Input Bahan Baku Dan Tambah Bahan Baku -->
+          <div class="sub-input-box multi-input">
+            <select v-model="tempIngredient.name" @change="handleIngredientChange" class="input-field sub-field">
+              <option disabled value="">Pilih Bahan</option>
+              <option v-for="ingOpt in ingredientOptions" :key="ingOpt" :value="ingOpt">{{ ingOpt }}</option>
+              <option value="ADD_NEW" class="add-new-option">+ Tambah Bahan Baru...</option>
+            </select>
+
+            <input v-model="tempIngredient.quantity" type="number" placeholder="Jumlah" class="input-field sub-field small no-spinner" />
+            
+            <select v-model="tempIngredient.unit" class="input-field sub-field small">
+                <option v-for="u in unitOptions" :key="u" :value="u">{{ u }}</option>
+            </select>
+
+            <input v-model="tempIngredient.price" type="number" placeholder="Harga (Rp)" class="input-field sub-field no-spinner" />
+            
+            <button type="button" @click="addIngredientToList" class="sub-save-btn add-ing-btn">+</button>
+          </div>
+
+          <!-- Sub Input Jika Pilih Tambah Bahan Baru -->
+          <div v-if="isAddingIngredient" class="sub-input-box mt-8">
+            <input v-model="newIngredientInput" type="text" placeholder="Ketik nama bahan baru..." class="input-field sub-field" />
+            <button type="button" @click="saveNewIngredient" class="sub-save-btn">Simpan Bahan</button>
+          </div>
+
+          <!-- Inpun Hasil Jadi Per pCS -->
+          <div class="batch-output-box mt-12">
+            <label>Berapa Total Produk Yang Dihasilkan</label>
+            <div class="batch-flex">
+              <input v-model="batchOutputQty" type="number" min="1" placeholder="Contoh: 10" class="input-field no-spinner" />
+              <span class="unit-pcs">Pcs</span>
+            </div>
+            <div class="result-hpp-preview mt-8">
+              <span>Estimasi Modal / HPP per Pcs:</span>
+              <strong class="highlight-cost">Rp {{ calculatedCostPerPcs.toLocaleString('id-ID') }}</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Harga Jual -->
       <div class="input-group">
         <label>Harga Jual</label>
-        <input v-model="form.price" type="text" placeholder="Rp 0" class="input-field" />
-      </div>
-
-      <!-- Modal Produksi -->
-      <div class="input-group">
-        <label>Modal / Biaya Produksi</label>
-        <input v-model="form.cost" type="text" placeholder="Rp 0" class="input-field" />
+        <input v-model="form.price" type="text" placeholder="Rp 0" class="input-field no-spinner" />
       </div>
 
       <!-- Stok & Batas Stok -->
       <div class="row-group">
         <div class="input-group half">
           <label>Stok</label>
-          <input v-model="form.stock" type="number" placeholder="0" class="input-field" />
+          <input v-model="form.stock" type="number" placeholder="0" class="input-field no-spinner" />
         </div>
         <div class="input-group half">
           <label>Batas Stok</label>
-          <input v-model="form.minStock" type="number" placeholder="0" class="input-field" />
+          <input v-model="form.minStock" type="number" placeholder="0" class="input-field no-spinner" />
         </div>
       </div>
 
-      <button @click="saveProduct" class="save-btn">Simpan</button>
+      <button @click="saveProduct" class="save-btn">
+        {{ editingProductId ? 'Update Perubahan' : 'Simpan Produk' }}
+      </button>
     </div>
 
     <!-- Daftar Produk -->
@@ -286,10 +490,8 @@ const deleteProduct = (id) => {
         <p class="info-text">Belum ada produk yang sesuai.</p>
       </div>
 
-      <div v-for="product in filteredProducts" :key="product.id" class="card product-card">
+      <div v-for="product in filteredProducts" :key="product.id" class="card product-card" :class="{ 'editing': editingProductId === product.id }">
         <div class="product-info-wrapper">
-          
-          <!-- Area gambar produk yang sudah di input -->
           <div class="prod-thumb-container" @click="$refs['fileInputList_' + product.id][0].click()" title="Klik untuk ganti gambar">
             <img v-if="product.image" :src="product.image" class="prod-thumb" />
             <div v-else class="prod-thumb-placeholder">
@@ -297,7 +499,6 @@ const deleteProduct = (id) => {
             </div>
           </div>
 
-          <!-- Input gambar pada Masing-masing Produk -->
           <input 
             :ref="'fileInputList_' + product.id" 
             type="file" 
@@ -307,21 +508,31 @@ const deleteProduct = (id) => {
           />
 
           <div class="prod-text-content">
-            <h4 class="prod-name">
-              {{ product.name }} 
-            </h4>
+            <h4 class="prod-name">{{ product.name }}</h4>
             <span class="badge">({{ product.category }} - {{ product.variant }})</span>
-            <p class="prod-detail">Jual: Rp {{ product.price.toLocaleString() }} | Modal: Rp {{ product.cost.toLocaleString() }}</p>
+            <p class="prod-detail">Jual: Rp {{ product.price.toLocaleString() }} | Modal: Rp {{ product.costing ? product.costing.totalCost.toLocaleString() : '0' }}</p>
             <p class="prod-detail">Stok: <strong>{{ product.stock }}</strong> (Min: {{ product.minStock }})</p>
           </div>
         </div>
-        <button @click="deleteProduct(product.id)" class="delete-btn">Hapus</button>
+        <div class="card-actions">
+          <button @click="editProduct(product)" class="edit-btn">Edit</button>
+          <button @click="deleteProduct(product.id)" class="delete-btn">Hapus</button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+input.no-spinner::-webkit-outer-spin-button,
+input.no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input.no-spinner {
+  -moz-appearance: textfield;
+}
+
 .page-wrapper {
   padding: 16px;
   width: 100%;
@@ -353,9 +564,9 @@ const deleteProduct = (id) => {
   font-size: 16px;
   font-weight: bold;
   color: #1e272e;
-}
+  }
 
-.filter-wrapper {
+  .filter-wrapper {
   position: relative;
 }
 
@@ -499,6 +710,16 @@ const deleteProduct = (id) => {
   border: 1px solid #dcdde1;
 }
 
+.form-header-title {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  font-weight: bold;
+  color: #5352ed;
+  text-align: center;
+  border-bottom: 1px solid #dcdde1;
+  padding-bottom: 8px;
+}
+
 .input-group {
   margin-bottom: 12px;
 }
@@ -608,6 +829,11 @@ const deleteProduct = (id) => {
   gap: 10px;
 }
 
+.product-card.editing {
+  background-color: #e8f4f8;
+  border-color: #70a1ff;
+}
+
 .product-info-wrapper {
   display: flex;
   align-items: center;
@@ -616,7 +842,6 @@ const deleteProduct = (id) => {
   min-width: 0;
 }
 
-/* Container Gambar Thumbnail */
 .prod-thumb-container {
   width: 45px;
   height: 45px;
@@ -678,6 +903,12 @@ const deleteProduct = (id) => {
   text-overflow: ellipsis;
 }
 
+.card-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
 .delete-btn {
   background-color: #ff4757;
   color: white;
@@ -687,5 +918,149 @@ const deleteProduct = (id) => {
   font-size: 11px;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+.edit-btn {
+  background-color: #2ed573;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.mt-12 {
+  margin-top: 12px;
+}
+
+.mt-8 {
+  margin-top: 8px;
+}
+
+.mt-4 {
+  margin-top: 4px;
+}
+
+.sub-card {
+  background-color: #f9f9f9;
+  border: 1px solid #e0e0e0;
+}
+
+.hpp-section {
+  padding: 16px;
+}
+
+.section-label {
+  display: block;
+  font-size: 12px;
+  color: #1e272e;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.hpp-radio-group {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: #1e272e;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.multi-input {
+  display: flex;
+  gap: 6px !important;
+  align-items: center;
+}
+
+.sub-field.small {
+  flex: 0 0 80px;
+}
+
+.add-ing-btn {
+  padding: 0 16px !important;
+  height: 38px;
+}
+
+.ingredient-table {
+  margin-bottom: 12px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #dcdde1;
+  font-size: 12px;
+}
+
+.ing-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f1f2f6;
+}
+
+.ing-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ing-delete-btn {
+  background: none;
+  border: none;
+  color: #ff4757;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.ing-total {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background-color: #f0f8ff;
+  font-weight: bold;
+  color: #5352ed;
+}
+
+.batch-output-box {
+  background: #ffffff;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #dcdde1;
+}
+
+.batch-flex {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.unit-pcs {
+  font-size: 12px;
+  font-weight: bold;
+  color: #1e272e;
+}
+
+.result-hpp-preview {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  background-color: #e8f4f8;
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.highlight-cost {
+  color: #27ae60;
+  font-size: 13px;
 }
 </style>
