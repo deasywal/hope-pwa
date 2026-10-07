@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
 // ===== Helper tanggal (waktu lokal, bukan UTC) =====
 function tanggalLokal() {
@@ -9,6 +9,7 @@ function tanggalLokal() {
 }
 
 function formatTanggal(iso) {
+  if (!iso) return ''
   const [y, m, d] = iso.split('-').map(Number)
   return new Date(y, m - 1, d).toLocaleDateString('id-ID', {
     day: 'numeric',
@@ -18,7 +19,7 @@ function formatTanggal(iso) {
 }
 
 function rupiah(angka) {
-  return 'Rp ' + angka.toLocaleString('id-ID')
+  return 'Rp ' + Number(angka || 0).toLocaleString('id-ID')
 }
 
 const hariIni = tanggalLokal()
@@ -51,6 +52,40 @@ const tanggal = ref(hariIni)
 const produkDipilihId = ref(1)
 const jumlah = ref(1)
 const keranjang = ref([])
+
+onMounted(() => {
+  const savedProducts = localStorage.getItem('productsList')
+  if (savedProducts) {
+    try {
+      const parsed = JSON.parse(savedProducts)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        produkList.value = parsed.map(p => ({
+          id: p.id,
+          nama: p.name,
+          varian: p.variant,
+          harga: p.price,
+          stok: p.stock,
+          image: p.image || ''
+        }))
+        produkDipilihId.value = produkList.value[0].id
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const savedTransactions = localStorage.getItem('transactionsList')
+  if (savedTransactions) {
+    try {
+      const parsedTx = JSON.parse(savedTransactions)
+      if (Array.isArray(parsedTx)) {
+        transaksiList.value = parsedTx
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+})
 
 // ===== Computed =====
 const produkSekarang = computed(() =>
@@ -107,6 +142,7 @@ function tambahItem() {
     produkId: produk.id,
     nama: produk.nama,
     varian: produk.varian,
+    image: produk.image || '',
     jumlah: jumlah.value,
     harga: produk.harga,
     subtotal: subtotal.value
@@ -144,6 +180,16 @@ function simpanTransaksi() {
     if (produk) produk.stok -= item.jumlah
   })
 
+  const originalFormat = produkList.value.map(p => ({
+    id: p.id,
+    name: p.nama,
+    variant: p.varian,
+    price: p.harga,
+    stock: p.stok,
+    image: p.image || ''
+  }))
+  localStorage.setItem('productsList', JSON.stringify(originalFormat))
+
   // Simpan transaksi
   transaksiList.value.unshift({
     id: Date.now(),
@@ -151,6 +197,7 @@ function simpanTransaksi() {
     items: [...keranjang.value],
     total: totalTransaksi.value
   })
+  localStorage.setItem('transactionsList', JSON.stringify(transaksiList.value))
 
   keranjang.value = []
   halaman.value = 'transaksi'
@@ -160,6 +207,31 @@ function simpanTransaksi() {
 }
 
 function bukaForm() {
+  const savedProducts = localStorage.getItem('productsList')
+  if (savedProducts) {
+    try {
+      const parsed = JSON.parse(savedProducts)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        produkList.value = parsed.map(p => ({
+          id: p.id,
+          nama: p.name,
+          varian: p.variant,
+          harga: p.price,
+          stok: p.stock,
+          image: p.image || ''
+        }))
+        produkDipilihId.value = produkList.value[0].id
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  if (produkList.value.length === 0) {
+    alert('Belum ada produk tersimpan. Silakan tambah produk terlebih dahulu di menu Produk!')
+    return
+  }
+
   keranjang.value = []
   jumlah.value = 1
   tanggal.value = hariIni
@@ -235,7 +307,9 @@ function bukaForm() {
           :key="i"
           class="item-info item-row"
         >
-          <div class="product-placeholder"></div>
+          <div class="product-placeholder">
+            <img v-if="item.image" :src="item.image" alt="Prod" class="tx-thumb" />
+          </div>
           <div class="product-detail">
             <strong>{{ item.nama }} - {{ item.varian }}</strong>
             <p>{{ item.jumlah }} pcs × {{ rupiah(item.harga) }}</p>
@@ -442,6 +516,16 @@ h2 {
   height: 60px;
   border-radius: 12px;
   flex-shrink: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tx-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .product-detail {

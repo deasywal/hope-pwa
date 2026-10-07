@@ -44,7 +44,11 @@ const form = ref({
 onMounted(() => {
   const savedProducts = localStorage.getItem('productsList')
   if (savedProducts) {
-    productList.value = JSON.parse(savedProducts)
+    try {
+      productList.value = JSON.parse(savedProducts)
+    } catch (e) {
+      console.error(e)
+    }
   }
 })
 
@@ -179,7 +183,7 @@ const filteredProducts = computed(() => {
 })
 
 const saveProduct = () => {
-  if (!form.value.name || !form.value.price) {
+  if (!form.value.name || form.value.price === '') {
     alert('Mohon isi minimal Nama Produk dan Harga Jual!')
     return
   }
@@ -190,7 +194,7 @@ const saveProduct = () => {
     name: form.value.name,
     category: form.value.category.trim() || 'Umum',
     variant: form.value.variant.trim() || 'Original',
-    price: Number(String(form.value.price).replace(/\D/g, '')),
+    price: Number(String(form.value.price).replace(/\D/g, '')) || 0,
     costing: {
       mode: costInputMode.value,
       totalCost: finalCost.value,
@@ -212,6 +216,7 @@ const saveProduct = () => {
 
   localStorage.setItem('productsList', JSON.stringify(productList.value))
   resetForm()
+  alert('Produk berhasil disimpan!')
 }
 
 const resetForm = () => {
@@ -241,20 +246,19 @@ const editProduct = (product) => {
   showForm.value = true
   
   form.value = {
-    image: product.image,
-    name: product.name,
-    category: product.category,
-    variant: product.variant,
-    price: product.price,
-    stock: product.stock,
-    minStock: product.minStock
+    image: product.image || '',
+    name: product.name || '',
+    category: product.category || '',
+    variant: product.variant || '',
+    price: product.price ? product.price.toLocaleString('id-ID') : '',
+    cost: product.costing ? product.costing.totalCost.toLocaleString('id-ID') : '',
+    stock: product.stock || 0,
+    minStock: product.minStock || 0
   }
 
   if (product.costing) {
-    costInputMode.value = product.costing.mode
-    if (costInputMode.value === 'total') {
-      form.value.cost = product.costing.totalCost
-    } else {
+    costInputMode.value = product.costing.mode || 'total'
+    if (costInputMode.value === 'detail') {
       productIngredients.value = product.costing.ingredients || []
       batchOutputQty.value = product.costing.batchQty || 1
     }
@@ -262,17 +266,31 @@ const editProduct = (product) => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-watch(() => form.value.price, (newValue, oldValue) => {
-  if (newValue && newValue !== oldValue) {
+watch(() => form.value.price, (newValue) => {
+  if (newValue !== undefined && newValue !== null) {
     const cleanValue = String(newValue).replace(/\D/g, '')
-    form.value.price = new Intl.NumberFormat('id-ID').format(cleanValue)
+    if (cleanValue === '') {
+      form.value.price = ''
+    } else {
+      const formatted = new Intl.NumberFormat('id-ID').format(Number(cleanValue))
+      if (formatted !== newValue) {
+        form.value.price = formatted
+      }
+    }
   }
 })
 
-watch(() => form.value.cost, (newValue, oldValue) => {
-  if (costInputMode.value === 'total' && newValue && newValue !== oldValue) {
+watch(() => form.value.cost, (newValue) => {
+  if (costInputMode.value === 'total' && newValue !== undefined && newValue !== null) {
     const cleanValue = String(newValue).replace(/\D/g, '')
-    form.value.cost = new Intl.NumberFormat('id-ID').format(cleanValue)
+    if (cleanValue === '') {
+      form.value.cost = ''
+    } else {
+      const formatted = new Intl.NumberFormat('id-ID').format(Number(cleanValue))
+      if (formatted !== newValue) {
+        form.value.cost = formatted
+      }
+    }
   }
 })
 </script>
@@ -492,7 +510,7 @@ watch(() => form.value.cost, (newValue, oldValue) => {
 
       <div v-for="product in filteredProducts" :key="product.id" class="card product-card" :class="{ 'editing': editingProductId === product.id }">
         <div class="product-info-wrapper">
-          <div class="prod-thumb-container" @click="$refs['fileInputList_' + product.id][0].click()" title="Klik untuk ganti gambar">
+          <div class="prod-thumb-container" @click="$refs['fileInputList_' + product.id]?.[0]?.click()" title="Klik untuk ganti gambar">
             <img v-if="product.image" :src="product.image" class="prod-thumb" />
             <div v-else class="prod-thumb-placeholder">
               <img src="/images/icons8-new-product-50.png" alt="New Product" class="prod-default-icon" />
@@ -564,9 +582,9 @@ input.no-spinner {
   font-size: 16px;
   font-weight: bold;
   color: #1e272e;
-  }
+}
 
-  .filter-wrapper {
+.filter-wrapper {
   position: relative;
 }
 
@@ -659,8 +677,8 @@ input.no-spinner {
 .filter-btn {
   background: #ffffff;
   border: 1px solid #dcdde1;
-  border-radius: 6px;
-  padding: 6px 8px;
+  border-radius: 10px;
+  padding: 10px 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -764,7 +782,7 @@ input.no-spinner {
   color: white;
   border: none;
   padding: 0 14px;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 12px;
   font-weight: bold;
   cursor: pointer;
@@ -784,11 +802,12 @@ input.no-spinner {
   background-color: #5352ed;
   color: white;
   border: none;
-  padding: 8px 14px;
-  border-radius: 6px;
-  font-size: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 16px;
   font-weight: bold;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .save-btn {
@@ -796,12 +815,12 @@ input.no-spinner {
   background-color: #5352ed;
   color: white;
   border: none;
-  padding: 12px;
-  border-radius: 8px;
-  font-size: 14px;
+  padding: 15px;
+  border-radius: 10px;
+  font-size: 16px;
   font-weight: bold;
   cursor: pointer;
-  margin-top: 6px;
+  margin: 12px 0;
 }
 
 .section-title {
@@ -913,9 +932,8 @@ input.no-spinner {
   background-color: #ff4757;
   color: white;
   border: none;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 11px;
+  padding: 8px 14px;
+  border-radius: 10px;
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -924,9 +942,8 @@ input.no-spinner {
   background-color: #2ed573;
   color: white;
   border: none;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 11px;
+  padding: 8px 14px;
+  border-radius: 10px;
   cursor: pointer;
   flex-shrink: 0;
 }

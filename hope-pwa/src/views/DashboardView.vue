@@ -8,32 +8,105 @@ const totalKeuntungan = ref(0)
 const totalModal = ref(0)
 const hasTransactions = ref(false)
 
+// ===== State untuk data grafik 7 hari terakhir =====
+const weeklyChartData = ref([
+  { day: 'Sen', total: 0, height: 10 },
+  { day: 'Sel', total: 0, height: 10 },
+  { day: 'Rab', total: 0, height: 10 },
+  { day: 'Kam', total: 0, height: 10 },
+  { day: 'Jum', total: 0, height: 10 },
+  { day: 'Sab', total: 0, height: 10 },
+  { day: 'Min', total: 0, height: 10 }
+])
+
 onMounted(() => {
   const today = new Date()
   const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
   currentDate.value = today.toLocaleDateString('id-ID', options)
-  selectedDate.value = today.toISOString().split('T')[0]
+  const todayIso = today.toISOString().split('T')[0]
+  selectedDate.value = todayIso
 
+  loadDashboardData(todayIso)
+})
+
+// ===== Fungsi Load & Hitung Data Dashboard =====
+function loadDashboardData(dateStr) {
   try {
     const savedTransactions = localStorage.getItem('transactionsList')
     if (savedTransactions) {
       const transactions = JSON.parse(savedTransactions)
       if (Array.isArray(transactions) && transactions.length > 0) {
         hasTransactions.value = true
-        totalPemasukan.value = transactions.reduce((acc, curr) => acc + (curr.total || 0), 0)
-        totalKeuntungan.value = totalPemasukan.value * 0.3
-        totalModal.value = totalPemasukan.value * 0.7
+        
+        // Hitung data untuk tanggal terpilih
+        const selectedTransactions = transactions.filter(t => t.tanggal === dateStr)
+        const pemasukanHariIni = selectedTransactions.reduce((acc, curr) => acc + (curr.total || 0), 0)
+        
+        totalPemasukan.value = pemasukanHariIni
+        totalKeuntungan.value = pemasukanHariIni * 0.3
+        totalModal.value = pemasukanHariIni * 0.7
+
+        // Hitung grafik 7 hari terakhir dari tanggal terpilih
+        calculateChart(dateStr, transactions)
+      } else {
+        hasTransactions.value = false
       }
     }
   } catch (e) {
     console.error('Gagal memuat data transaksi:', e)
   }
-})
+}
 
+// ===== Hitung Statistik Grafik (7 Hari Terakhir) =====
+function calculateChart(dateStr, transactions) {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const baseDate = new Date(y, m - 1, d)
+
+  const daysKeys = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
+  const totalsByDay = { 'Sen': 0, 'Sel': 0, 'Rab': 0, 'Kam': 0, 'Jum': 0, 'Sab': 0, 'Min': 0 }
+  const dateBuckets = {}
+
+  for (let i = 6; i >= 0; i--) {
+    const dTarget = new Date(baseDate)
+    dTarget.setDate(baseDate.getDate() - i)
+    const yyyy = dTarget.getFullYear()
+    const mm = String(dTarget.getMonth() + 1).padStart(2, '0')
+    const dd = String(dTarget.getDate()).padStart(2, '0')
+    const formattedKey = `${yyyy}-${mm}-${dd}`
+    dateBuckets[formattedKey] = daysKeys[dTarget.getDay()]
+  }
+
+  let maxVal = 10000
+
+  transactions.forEach(t => {
+    if (t.tanggal && dateBuckets[t.tanggal]) {
+      const dayName = dateBuckets[t.tanggal]
+      totalsByDay[dayName] = (totalsByDay[dayName] || 0) + (t.total || 0)
+    }
+  })
+
+  Object.values(totalsByDay).forEach(val => {
+    if (val > maxVal) maxVal = val
+  })
+
+  const orderedDays = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
+  weeklyChartData.value = orderedDays.map(day => {
+    const val = totalsByDay[day]
+    const heightPct = Math.max(15, Math.round((val / maxVal) * 100))
+    return { day, total: val, height: heightPct }
+  })
+}
+
+// ===== Handler Ubah Tanggal =====
 const onDateChange = (event) => {
-  const chosen = new Date(event.target.value)
+  const chosenStr = event.target.value
+  selectedDate.value = chosenStr
+  const [y, m, d] = chosenStr.split('-').map(Number)
+  const chosen = new Date(y, m - 1, d)
   const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
   currentDate.value = chosen.toLocaleDateString('id-ID', options)
+
+  loadDashboardData(chosenStr)
 }
 </script>
 
@@ -80,7 +153,18 @@ const onDateChange = (event) => {
       </div>
 
       <div v-else class="active-chart">
-        <p class="active-text">Grafik Penjualan Aktif</p>
+        <div class="empty-chart-bars">
+          <div 
+            v-for="(item, idx) in weeklyChartData" 
+            :key="idx" 
+            class="bar active-bar" 
+            :style="{ height: item.height + '%' }"
+            :title="item.day + ': Rp ' + item.total.toLocaleString()"
+          ></div>
+        </div>
+        <div class="chart-labels">
+          <span v-for="(item, idx) in weeklyChartData" :key="idx">{{ item.day }}</span>
+        </div>
       </div>
     </section>
 
@@ -232,18 +316,40 @@ const onDateChange = (event) => {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  gap: 12px;
-  height: 60px;
+  gap: 16px;
+  height: 75px;
   width: 100%;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   border-bottom: 1px dashed #dcdde1;
   padding-bottom: 4px;
 }
 
 .bar.placeholder {
-  width: 16px;
+  width: 24px;
   background-color: #dfe4ea;
-  border-radius: 4px 4px 0 0;
+  border-radius: 6px 6px 0 0;
+}
+
+.bar.active-bar {
+  width: 24px;
+  background-color: #5352ed;
+  border-radius: 6px 6px 0 0;
+  transition: height 0.3s ease;
+}
+
+.chart-labels {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  font-size: 11px;
+  color: #718093;
+  font-weight: bold;
+}
+
+.chart-labels span {
+  width: 24px;
+  text-align: center;
 }
 
 .empty-text {
