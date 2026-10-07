@@ -1,12 +1,13 @@
 <script setup>
 import { RouterView, useRoute, useRouter } from 'vue-router'
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 
 const route = useRoute()
 const router = useRouter()
 
 const showProfileMenu = ref(false)
 const showProfileModal = ref(false)
+const profileWrapper = ref(null)
 const brandName = ref(localStorage.getItem('umkmBrandName') || 'Bananif')
 const phoneNum = ref(localStorage.getItem('umkmPhone') || '')
 
@@ -16,15 +17,35 @@ const editForm = ref({
   password: ''
 })
 
-// Untuk update brand name secara langsung
+// Update brand name secara langsung
+function onStorage() {
+  brandName.value = localStorage.getItem('umkmBrandName') || 'Bananif'
+}
+
+// Tutup dropdown kalau klik di luar menu
+function onClickOutside(e) {
+  if (profileWrapper.value && !profileWrapper.value.contains(e.target)) {
+    showProfileMenu.value = false
+  }
+}
+
 onMounted(() => {
-  window.addEventListener('storage', () => {
-    brandName.value = localStorage.getItem('umkmBrandName') || 'Bananif'
-  })
+  window.addEventListener('storage', onStorage)
+  document.addEventListener('click', onClickOutside)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('storage', onStorage)
+  document.removeEventListener('click', onClickOutside)
 })
 
 const toggleProfileMenu = () => {
   showProfileMenu.value = !showProfileMenu.value
+}
+
+const openProfilePage = () => {
+  showProfileMenu.value = false
+  router.push('/profil')
 }
 
 const openProfileModal = () => {
@@ -37,7 +58,7 @@ const openProfileModal = () => {
 const saveProfileChanges = () => {
   brandName.value = editForm.value.brandName
   phoneNum.value = editForm.value.phone
-  
+
   localStorage.setItem('umkmBrandName', brandName.value)
   localStorage.setItem('umkmPhone', phoneNum.value)
   if (editForm.value.password) {
@@ -49,11 +70,12 @@ const saveProfileChanges = () => {
 }
 
 const logout = () => {
+  showProfileMenu.value = false
   localStorage.removeItem('isLoggedIn')
   router.push('/login')
 }
 
-// Buat Menghilangkan Navbar dan Header pas lagi dimenu Login / Register
+// Menghilangkan Navbar dan Header saat di halaman Login / Register
 const hideNav = computed(() => {
   return route.path === '/login' || route.path === '/register'
 })
@@ -61,28 +83,53 @@ const hideNav = computed(() => {
 
 <template>
   <div class="app-container">
-    
-    <!-- Header Global (Muncul di semua halaman kecuali Login/Register) -->
+
+    <!-- Header Global (muncul di semua halaman kecuali Login/Register) -->
     <header v-if="!hideNav" class="app-header">
       <div class="welcome-header-text">
         <h2>Halo, Pemilik UMKM {{ brandName }}</h2>
         <p>Semangat terus mengembangkan usahamu!</p>
       </div>
 
-      <div class="profile-wrapper">
+      <div class="profile-wrapper" ref="profileWrapper">
         <button @click="toggleProfileMenu" class="profile-btn">
           <span>Menu</span>
           <span class="dropdown-arrow">▼</span>
         </button>
 
         <div v-if="showProfileMenu" class="profile-dropdown">
-          <button @click="openProfileModal" class="dropdown-item">Pengaturan Akun</button>
-          <button @click="logout" class="dropdown-item logout">Keluar</button>
+          <button @click="openProfilePage" class="dropdown-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            Profil
+          </button>
+
+          <button @click="openProfileModal" class="dropdown-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+            Pengaturan Akun
+          </button>
+
+          <button @click="logout" class="dropdown-item logout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            Keluar
+          </button>
         </div>
       </div>
     </header>
 
-    <!-- Konten Halaman (Dashboard, Produk, Transaksi, Laporan) -->
+    <!-- Konten Halaman (Dashboard, Produk, Transaksi, Laporan, Profil) -->
     <main class="main-content">
       <RouterView />
     </main>
@@ -90,8 +137,8 @@ const hideNav = computed(() => {
     <!-- Modal Pengaturan Akun Global -->
     <div v-if="showProfileModal" class="modal-overlay">
       <div class="modal-content">
-        <h3>Pengaturan UMKM & Profil</h3>
-        
+        <h3>Pengaturan UMKM &amp; Profil</h3>
+
         <div class="input-group">
           <label>Nama Usaha / Brand</label>
           <input v-model="editForm.brandName" type="text" placeholder="Contoh: HOPE Elektronik" />
@@ -210,14 +257,17 @@ body {
   border: 1px solid #dcdde1;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  width: 150px;
+  width: 170px;
   z-index: 1000;
   overflow: hidden;
 }
 
 .dropdown-item {
   width: 100%;
-  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
   text-align: left;
   background: none;
   border: none;
@@ -226,6 +276,12 @@ body {
   color: #2f3640;
   font-weight: bold;
   border-bottom: 1px solid #f1f2f6;
+}
+
+.dropdown-item svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .dropdown-item:hover {
