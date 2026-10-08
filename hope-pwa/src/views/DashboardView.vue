@@ -8,7 +8,7 @@ const totalKeuntungan = ref(0)
 const totalModal = ref(0)
 const hasTransactions = ref(false)
 
-// ===== Helper tanggal (waktu lokal, bukan UTC) =====
+// ===== Helper tanggal =====
 function tanggalLokal(date = new Date()) {
   const pad = n => String(n).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
@@ -44,7 +44,7 @@ function loadDashboardData(dateStr) {
     if (Array.isArray(transactions) && transactions.length > 0) {
       hasTransactions.value = true
 
-      // Hitung data untuk tanggal terpilih
+      // Untuk hitung data untuk tanggal terpilih
       const selectedTransactions = transactions.filter(t => t.tanggal === dateStr)
       const pemasukanHariIni = selectedTransactions.reduce((acc, curr) => acc + (Number(curr.total) || 0), 0)
 
@@ -52,7 +52,7 @@ function loadDashboardData(dateStr) {
       totalKeuntungan.value = pemasukanHariIni * 0.3
       totalModal.value = pemasukanHariIni * 0.7
 
-      // Hitung grafik minggu dari tanggal terpilih
+      // Untuk hitung grafik minggu dari tanggal terpilih
       calculateChart(dateStr, transactions)
     } else {
       hasTransactions.value = false
@@ -65,12 +65,12 @@ function loadDashboardData(dateStr) {
   }
 }
 
-// ===== Hitung Statistik Grafik (urutan tetap Sen - Min, minggu dari tanggal terpilih) =====
+// ===== Untuk Statistik Grafik =====
 function calculateChart(dateStr, transactions) {
   const [y, m, d] = dateStr.split('-').map(Number)
   const namaHari = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
 
-  // Cari hari Senin di minggu tanggal terpilih
+  // Untuk hari dan tanggal terpilih
   const selisihKeSenin = (new Date(y, m - 1, d).getDay() + 6) % 7
 
   const hari = namaHari.map((nama, i) => {
@@ -78,7 +78,7 @@ function calculateChart(dateStr, transactions) {
     return { key: tanggalLokal(dt), day: nama, total: 0 }
   })
 
-  // Jumlahkan transaksi sesuai tanggal aslinya
+  // Untik transaksi sesuai tanggal aslinya
   transactions.forEach(t => {
     const target = hari.find(h => h.key === t.tanggal)
     if (target) target.total += Number(t.total) || 0
@@ -165,7 +165,7 @@ const onDateChange = (event) => {
       </div>
     </section>
 
-    <!-- Kartu Informasi Keuangan dengan Ikon -->
+    <!-- Informasi Keuangan dengan Ikon -->
     <section class="financial-grid">
       <div class="card info-card">
         <div class="card-header-flex">
