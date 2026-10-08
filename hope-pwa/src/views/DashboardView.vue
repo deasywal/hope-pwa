@@ -8,6 +8,12 @@ const totalKeuntungan = ref(0)
 const totalModal = ref(0)
 const hasTransactions = ref(false)
 
+// ===== Helper tanggal (waktu lokal, bukan UTC) =====
+function tanggalLokal(date = new Date()) {
+  const pad = n => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
 // ===== State untuk data grafik 7 hari terakhir =====
 const weeklyChartData = ref([
   { day: 'Sen', total: 0, height: 10 },
@@ -23,7 +29,7 @@ onMounted(() => {
   const today = new Date()
   const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
   currentDate.value = today.toLocaleDateString('id-ID', options)
-  const todayIso = today.toISOString().split('T')[0]
+  const todayIso = tanggalLokal(today)
   selectedDate.value = todayIso
 
   loadDashboardData(todayIso)
@@ -33,73 +39,64 @@ onMounted(() => {
 function loadDashboardData(dateStr) {
   try {
     const savedTransactions = localStorage.getItem('transactionsList')
-    if (savedTransactions) {
-      const transactions = JSON.parse(savedTransactions)
-      if (Array.isArray(transactions) && transactions.length > 0) {
-        hasTransactions.value = true
-        
-        // Hitung data untuk tanggal terpilih
-        const selectedTransactions = transactions.filter(t => t.tanggal === dateStr)
-        const pemasukanHariIni = selectedTransactions.reduce((acc, curr) => acc + (curr.total || 0), 0)
-        
-        totalPemasukan.value = pemasukanHariIni
-        totalKeuntungan.value = pemasukanHariIni * 0.3
-        totalModal.value = pemasukanHariIni * 0.7
+    const transactions = savedTransactions ? JSON.parse(savedTransactions) : []
 
-        // Hitung grafik 7 hari terakhir dari tanggal terpilih
-        calculateChart(dateStr, transactions)
-      } else {
-        hasTransactions.value = false
-      }
+    if (Array.isArray(transactions) && transactions.length > 0) {
+      hasTransactions.value = true
+
+      // Hitung data untuk tanggal terpilih
+      const selectedTransactions = transactions.filter(t => t.tanggal === dateStr)
+      const pemasukanHariIni = selectedTransactions.reduce((acc, curr) => acc + (Number(curr.total) || 0), 0)
+
+      totalPemasukan.value = pemasukanHariIni
+      totalKeuntungan.value = pemasukanHariIni * 0.3
+      totalModal.value = pemasukanHariIni * 0.7
+
+      // Hitung grafik minggu dari tanggal terpilih
+      calculateChart(dateStr, transactions)
+    } else {
+      hasTransactions.value = false
+      totalPemasukan.value = 0
+      totalKeuntungan.value = 0
+      totalModal.value = 0
     }
   } catch (e) {
     console.error('Gagal memuat data transaksi:', e)
   }
 }
 
-// ===== Hitung Statistik Grafik (7 Hari Terakhir) =====
+// ===== Hitung Statistik Grafik (urutan tetap Sen - Min, minggu dari tanggal terpilih) =====
 function calculateChart(dateStr, transactions) {
   const [y, m, d] = dateStr.split('-').map(Number)
-  const baseDate = new Date(y, m - 1, d)
+  const namaHari = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
 
-  const daysKeys = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
-  const totalsByDay = { 'Sen': 0, 'Sel': 0, 'Rab': 0, 'Kam': 0, 'Jum': 0, 'Sab': 0, 'Min': 0 }
-  const dateBuckets = {}
+  // Cari hari Senin di minggu tanggal terpilih
+  const selisihKeSenin = (new Date(y, m - 1, d).getDay() + 6) % 7
 
-  for (let i = 6; i >= 0; i--) {
-    const dTarget = new Date(baseDate)
-    dTarget.setDate(baseDate.getDate() - i)
-    const yyyy = dTarget.getFullYear()
-    const mm = String(dTarget.getMonth() + 1).padStart(2, '0')
-    const dd = String(dTarget.getDate()).padStart(2, '0')
-    const formattedKey = `${yyyy}-${mm}-${dd}`
-    dateBuckets[formattedKey] = daysKeys[dTarget.getDay()]
-  }
+  const hari = namaHari.map((nama, i) => {
+    const dt = new Date(y, m - 1, d - selisihKeSenin + i)
+    return { key: tanggalLokal(dt), day: nama, total: 0 }
+  })
 
-  let maxVal = 10000
-
+  // Jumlahkan transaksi sesuai tanggal aslinya
   transactions.forEach(t => {
-    if (t.tanggal && dateBuckets[t.tanggal]) {
-      const dayName = dateBuckets[t.tanggal]
-      totalsByDay[dayName] = (totalsByDay[dayName] || 0) + (t.total || 0)
-    }
+    const target = hari.find(h => h.key === t.tanggal)
+    if (target) target.total += Number(t.total) || 0
   })
 
-  Object.values(totalsByDay).forEach(val => {
-    if (val > maxVal) maxVal = val
-  })
+  const maxVal = Math.max(10000, ...hari.map(h => h.total))
 
-  const orderedDays = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
-  weeklyChartData.value = orderedDays.map(day => {
-    const val = totalsByDay[day]
-    const heightPct = Math.max(15, Math.round((val / maxVal) * 100))
-    return { day, total: val, height: heightPct }
-  })
+  weeklyChartData.value = hari.map(h => ({
+    day: h.day,
+    total: h.total,
+    height: Math.max(15, Math.round((h.total / maxVal) * 100))
+  }))
 }
 
 // ===== Handler Ubah Tanggal =====
 const onDateChange = (event) => {
   const chosenStr = event.target.value
+  if (!chosenStr) return
   selectedDate.value = chosenStr
   const [y, m, d] = chosenStr.split('-').map(Number)
   const chosen = new Date(y, m - 1, d)
