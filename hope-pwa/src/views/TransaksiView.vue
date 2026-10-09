@@ -51,6 +51,7 @@ const tanggal = ref(hariIni)
 const produkDipilihId = ref(1)
 const jumlah = ref(1)
 const keranjang = ref([])
+const editId = ref(null) // null = catat baru, isi = sedang edit transaksi
 
 // ===== Computed =====
 const produkSekarang = computed(() =>
@@ -58,7 +59,8 @@ const produkSekarang = computed(() =>
 )
 
 const harga = computed(() => produkSekarang.value?.harga || 0)
-const subtotal = computed(() => harga.value * jumlah.value)
+const qty = computed(() => Math.floor(Number(jumlah.value)) || 0)
+const subtotal = computed(() => harga.value * qty.value)
 
 const totalTransaksi = computed(() =>
   keranjang.value.reduce((total, item) => total + item.subtotal, 0)
@@ -78,27 +80,60 @@ const totalHariIni = computed(() =>
 )
 
 // ===== Methods =====
-function tambahJumlah() {
-  if (jumlah.value < (produkSekarang.value?.stok || 0)) {
-    jumlah.value++
+// Stok yang boleh dipakai. Saat edit, jumlah dari transaksi lama dihitung kembali.
+function stokTersedia(produkId) {
+  const produk = produkList.value.find(p => p.id === produkId)
+  if (!produk) return 0
+  let tersedia = produk.stok
+  if (editId.value !== null) {
+    const lama = transaksiList.value.find(t => t.id === editId.value)
+    if (lama) {
+      tersedia += lama.items
+        .filter(i => i.produkId === produkId)
+        .reduce((total, i) => total + i.jumlah, 0)
+    }
   }
+  return tersedia
+}
+
+const stokMaks = computed(() => stokTersedia(Number(produkDipilihId.value)))
+
+function kembalikanStok(transaksi) {
+  transaksi.items.forEach(item => {
+    const produk = produkList.value.find(p => p.id === item.produkId)
+    if (produk) produk.stok += item.jumlah
+  })
+}
+
+function tambahJumlah() {
+  if (qty.value < stokMaks.value) jumlah.value = qty.value + 1
 }
 
 function kurangiJumlah() {
-  if (jumlah.value > 1) {
-    jumlah.value--
-  }
+  if (qty.value > 1) jumlah.value = qty.value - 1
+}
+
+// Dipanggil saat kolom jumlah selesai diketik
+function rapikanJumlah() {
+  if (qty.value < 1) jumlah.value = 1
+  else if (stokMaks.value > 0 && qty.value > stokMaks.value) jumlah.value = stokMaks.value
+  else jumlah.value = qty.value
 }
 
 function tambahItem() {
   const produk = produkSekarang.value
-  if (!produk || jumlah.value < 1) return
+  if (!produk) return
+
+  if (qty.value < 1) {
+    alert('Jumlah minimal 1!')
+    return
+  }
 
   const totalDalamKeranjang = keranjang.value
     .filter(item => item.produkId === produk.id)
     .reduce((total, item) => total + item.jumlah, 0)
 
-  if (totalDalamKeranjang + jumlah.value > produk.stok) {
+  if (totalDalamKeranjang + qty.value > stokTersedia(produk.id)) {
     alert('Jumlah melebihi stok yang tersedia!')
     return
   }
@@ -107,7 +142,7 @@ function tambahItem() {
     produkId: produk.id,
     nama: produk.nama,
     varian: produk.varian,
-    jumlah: jumlah.value,
+    jumlah: qty.value,
     harga: produk.harga,
     subtotal: subtotal.value
   })
@@ -127,43 +162,76 @@ function simpanTransaksi() {
 
   // Validasi stok per produk
   for (const item of keranjang.value) {
-    const produk = produkList.value.find(p => p.id === item.produkId)
     const totalItem = keranjang.value
       .filter(i => i.produkId === item.produkId)
       .reduce((total, i) => total + i.jumlah, 0)
 
-    if (!produk || totalItem > produk.stok) {
+    if (totalItem > stokTersedia(item.produkId)) {
       alert(`Stok tidak mencukupi untuk ${item.nama} - ${item.varian}!`)
       return
     }
   }
 
-  // Kurangi stok
+  const sedangEdit = editId.value !== null
+
+  // Saat edit, kembalikan dulu stok dari transaksi lama
+  if (sedangEdit) {
+    const lama = transaksiList.value.find(t => t.id === editId.value)
+    if (lama) kembalikanStok(lama)
+  }
+
+  // Kurangi stok sesuai isi keranjang
   keranjang.value.forEach(item => {
     const produk = produkList.value.find(p => p.id === item.produkId)
     if (produk) produk.stok -= item.jumlah
   })
 
-  // Simpan transaksi
-  transaksiList.value.unshift({
-    id: Date.now(),
+  const data = {
     tanggal: tanggal.value,
-    items: [...keranjang.value],
+    items: keranjang.value.map(i => ({ ...i })),
     total: totalTransaksi.value
-  })
+  }
 
-  keranjang.value = []
-  halaman.value = 'transaksi'
-  tabAktif.value = 'hari-ini'
+  if (sedangEdit) {
+    const idx = transaksiList.value.findIndex(t => t.id === editId.value)
+    if (idx !== -1) transaksiList.value[idx] = { id: editId.value, ...data }
+  } else {
+    transaksiList.value.unshift({ id: Date.now(), ...data })
+  }
 
-  alert('Transaksi berhasil dicatat!')
+  tutupForm(tanggal.value === hariIni ? 'hari-ini' : 'riwayat')
+  alert(sedangEdit ? 'Transaksi berhasil diperbarui!' : 'Transaksi berhasil dicatat!')
+}
+
+function hapusTransaksi(transaksi) {
+  if (!confirm('Hapus transaksi ini? Stok produk akan dikembalikan.')) return
+  kembalikanStok(transaksi)
+  transaksiList.value = transaksiList.value.filter(t => t.id !== transaksi.id)
 }
 
 function bukaForm() {
+  editId.value = null
   keranjang.value = []
   jumlah.value = 1
   tanggal.value = hariIni
   halaman.value = 'form'
+}
+
+function mulaiEdit(transaksi) {
+  editId.value = transaksi.id
+  keranjang.value = transaksi.items.map(i => ({ ...i }))
+  tanggal.value = transaksi.tanggal
+  produkDipilihId.value = produkList.value[0]?.id ?? 1
+  jumlah.value = 1
+  halaman.value = 'form'
+}
+
+function tutupForm(tab) {
+  editId.value = null
+  keranjang.value = []
+  jumlah.value = 1
+  halaman.value = 'transaksi'
+  if (tab) tabAktif.value = tab
 }
 </script>
 
@@ -245,6 +313,27 @@ function bukaForm() {
         <small class="date-info">
           Tanggal: {{ formatTanggal(transaksi.tanggal) }} | Total: <strong>{{ rupiah(transaksi.total) }}</strong>
         </small>
+
+        <div class="card-actions">
+          <button class="btn-edit" @click="mulaiEdit(transaksi)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+            </svg>
+            Edit
+          </button>
+          <button class="btn-hapus" @click="hapusTransaksi(transaksi)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+              <path d="M10 11v6" />
+              <path d="M14 11v6" />
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+            </svg>
+            Hapus
+          </button>
+        </div>
       </div>
 
       <button class="primary-button" @click="bukaForm">
@@ -254,11 +343,11 @@ function bukaForm() {
 
     <!-- HALAMAN FORM CATAT PENJUALAN -->
     <template v-else>
-      <button class="back-button" @click="halaman = 'transaksi'">
+      <button class="back-button" @click="tutupForm()">
         ← Kembali
       </button>
 
-      <h2>Catat Penjualan</h2>
+      <h2>{{ editId !== null ? 'Edit Penjualan' : 'Catat Penjualan' }}</h2>
 
       <label>Tanggal</label>
       <input type="date" v-model="tanggal" />
@@ -266,14 +355,22 @@ function bukaForm() {
       <label>Pilih Produk &amp; Varian</label>
       <select v-model.number="produkDipilihId" @change="jumlah = 1">
         <option v-for="produk in produkList" :key="produk.id" :value="produk.id">
-          {{ produk.nama }} - {{ produk.varian }} (Stok: {{ produk.stok }})
+          {{ produk.nama }} - {{ produk.varian }} (Stok: {{ stokTersedia(produk.id) }})
         </option>
       </select>
 
       <label>Jumlah</label>
       <div class="quantity-control">
         <button @click="kurangiJumlah">−</button>
-        <strong>{{ jumlah }}</strong>
+        <input
+          v-model.number="jumlah"
+          type="number"
+          inputmode="numeric"
+          min="1"
+          :max="stokMaks"
+          class="qty-input"
+          @blur="rapikanJumlah"
+        />
         <button @click="tambahJumlah">+</button>
         <span>pcs</span>
       </div>
@@ -308,7 +405,7 @@ function bukaForm() {
       </div>
 
       <button class="primary-button" @click="simpanTransaksi">
-        Simpan Transaksi
+        {{ editId !== null ? 'Simpan Perubahan' : 'Simpan Transaksi' }}
       </button>
     </template>
 
@@ -464,6 +561,44 @@ h2 {
   color: #696d74;
 }
 
+.card-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #eee;
+}
+
+.card-actions button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.card-actions svg {
+  width: 16px;
+  height: 16px;
+}
+
+.btn-edit {
+  background: #f1efff;
+  border: 1px solid #cfccf7;
+  color: #5a57d6;
+}
+
+.btn-hapus {
+  background: #fff5f5;
+  border: 1px solid #f0c4c4;
+  color: #d94b4b;
+}
+
 .primary-button {
   width: 100%;
   background: linear-gradient(100deg, #7477ee, #9b7bea);
@@ -523,6 +658,24 @@ select {
   font-size: 20px;
   color: #48494b;
   cursor: pointer;
+}
+
+.quantity-control .qty-input {
+  width: 80px;
+  padding: 8px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: bold;
+  color: #111;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.qty-input::-webkit-outer-spin-button,
+.qty-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .quantity-control span {
