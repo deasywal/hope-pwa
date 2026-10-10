@@ -8,32 +8,102 @@ const totalKeuntungan = ref(0)
 const totalModal = ref(0)
 const hasTransactions = ref(false)
 
+// ===== Helper tanggal =====
+function tanggalLokal(date = new Date()) {
+  const pad = n => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+// ===== State untuk data grafik 7 hari terakhir =====
+const weeklyChartData = ref([
+  { day: 'Sen', total: 0, height: 10 },
+  { day: 'Sel', total: 0, height: 10 },
+  { day: 'Rab', total: 0, height: 10 },
+  { day: 'Kam', total: 0, height: 10 },
+  { day: 'Jum', total: 0, height: 10 },
+  { day: 'Sab', total: 0, height: 10 },
+  { day: 'Min', total: 0, height: 10 }
+])
+
 onMounted(() => {
   const today = new Date()
   const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
   currentDate.value = today.toLocaleDateString('id-ID', options)
-  selectedDate.value = today.toISOString().split('T')[0]
+  const todayIso = tanggalLokal(today)
+  selectedDate.value = todayIso
 
+  loadDashboardData(todayIso)
+})
+
+// ===== Fungsi Load & Hitung Data Dashboard =====
+function loadDashboardData(dateStr) {
   try {
     const savedTransactions = localStorage.getItem('transactionsList')
-    if (savedTransactions) {
-      const transactions = JSON.parse(savedTransactions)
-      if (Array.isArray(transactions) && transactions.length > 0) {
-        hasTransactions.value = true
-        totalPemasukan.value = transactions.reduce((acc, curr) => acc + (curr.total || 0), 0)
-        totalKeuntungan.value = totalPemasukan.value * 0.3
-        totalModal.value = totalPemasukan.value * 0.7
-      }
+    const transactions = savedTransactions ? JSON.parse(savedTransactions) : []
+
+    if (Array.isArray(transactions) && transactions.length > 0) {
+      hasTransactions.value = true
+
+      // Untuk hitung data untuk tanggal terpilih
+      const selectedTransactions = transactions.filter(t => t.tanggal === dateStr)
+      const pemasukanHariIni = selectedTransactions.reduce((acc, curr) => acc + (Number(curr.total) || 0), 0)
+
+      totalPemasukan.value = pemasukanHariIni
+      totalKeuntungan.value = pemasukanHariIni * 0.3
+      totalModal.value = pemasukanHariIni * 0.7
+
+      // Untuk hitung grafik minggu dari tanggal terpilih
+      calculateChart(dateStr, transactions)
+    } else {
+      hasTransactions.value = false
+      totalPemasukan.value = 0
+      totalKeuntungan.value = 0
+      totalModal.value = 0
     }
   } catch (e) {
     console.error('Gagal memuat data transaksi:', e)
   }
-})
+}
 
+// ===== Untuk Statistik Grafik =====
+function calculateChart(dateStr, transactions) {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const namaHari = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
+
+  // Untuk hari dan tanggal terpilih
+  const selisihKeSenin = (new Date(y, m - 1, d).getDay() + 6) % 7
+
+  const hari = namaHari.map((nama, i) => {
+    const dt = new Date(y, m - 1, d - selisihKeSenin + i)
+    return { key: tanggalLokal(dt), day: nama, total: 0 }
+  })
+
+  // Untik transaksi sesuai tanggal aslinya
+  transactions.forEach(t => {
+    const target = hari.find(h => h.key === t.tanggal)
+    if (target) target.total += Number(t.total) || 0
+  })
+
+  const maxVal = Math.max(10000, ...hari.map(h => h.total))
+
+  weeklyChartData.value = hari.map(h => ({
+    day: h.day,
+    total: h.total,
+    height: Math.max(15, Math.round((h.total / maxVal) * 100))
+  }))
+}
+
+// ===== Handler Ubah Tanggal =====
 const onDateChange = (event) => {
-  const chosen = new Date(event.target.value)
+  const chosenStr = event.target.value
+  if (!chosenStr) return
+  selectedDate.value = chosenStr
+  const [y, m, d] = chosenStr.split('-').map(Number)
+  const chosen = new Date(y, m - 1, d)
   const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
   currentDate.value = chosen.toLocaleDateString('id-ID', options)
+
+  loadDashboardData(chosenStr)
 }
 </script>
 
@@ -80,11 +150,22 @@ const onDateChange = (event) => {
       </div>
 
       <div v-else class="active-chart">
-        <p class="active-text">Grafik Penjualan Aktif</p>
+        <div class="empty-chart-bars">
+          <div 
+            v-for="(item, idx) in weeklyChartData" 
+            :key="idx" 
+            class="bar active-bar" 
+            :style="{ height: item.height + '%' }"
+            :title="item.day + ': Rp ' + item.total.toLocaleString()"
+          ></div>
+        </div>
+        <div class="chart-labels">
+          <span v-for="(item, idx) in weeklyChartData" :key="idx">{{ item.day }}</span>
+        </div>
       </div>
     </section>
 
-    <!-- Kartu Informasi Keuangan dengan Ikon -->
+    <!-- Informasi Keuangan dengan Ikon -->
     <section class="financial-grid">
       <div class="card info-card">
         <div class="card-header-flex">
@@ -232,18 +313,40 @@ const onDateChange = (event) => {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  gap: 12px;
-  height: 60px;
+  gap: 16px;
+  height: 75px;
   width: 100%;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   border-bottom: 1px dashed #dcdde1;
   padding-bottom: 4px;
 }
 
 .bar.placeholder {
-  width: 16px;
+  width: 24px;
   background-color: #dfe4ea;
-  border-radius: 4px 4px 0 0;
+  border-radius: 6px 6px 0 0;
+}
+
+.bar.active-bar {
+  width: 24px;
+  background-color: #5352ed;
+  border-radius: 6px 6px 0 0;
+  transition: height 0.3s ease;
+}
+
+.chart-labels {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  font-size: 11px;
+  color: #718093;
+  font-weight: bold;
+}
+
+.chart-labels span {
+  width: 24px;
+  text-align: center;
 }
 
 .empty-text {
