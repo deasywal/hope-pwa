@@ -115,7 +115,6 @@ const totalHariIni = computed(() =>
 )
 
 // ===== Methods =====
-// Stok yang boleh dipakai. Saat edit, jumlah dari transaksi lama dihitung kembali.
 function stokTersedia(produkId) {
   const produk = produkList.value.find(p => p.id === produkId)
   if (!produk) return 0
@@ -148,7 +147,6 @@ function kurangiJumlah() {
   if (qty.value > 1) jumlah.value = qty.value - 1
 }
 
-// Dipanggil saat kolom jumlah selesai diketik
 function rapikanJumlah() {
   if (qty.value < 1) jumlah.value = 1
   else if (stokMaks.value > 0 && qty.value > stokMaks.value) jumlah.value = stokMaks.value
@@ -195,7 +193,6 @@ function simpanTransaksi() {
     return
   }
 
-  // Validasi stok per produk
   for (const item of keranjang.value) {
     const totalItem = keranjang.value
       .filter(i => i.produkId === item.produkId)
@@ -209,13 +206,11 @@ function simpanTransaksi() {
 
   const sedangEdit = editId.value !== null
 
-  // Saat edit, kembalikan dulu stok dari transaksi lama
   if (sedangEdit) {
     const lama = transaksiList.value.find(t => t.id === editId.value)
     if (lama) kembalikanStok(lama)
   }
 
-  // Kurangi stok sesuai isi keranjang
   keranjang.value.forEach(item => {
     const produk = produkList.value.find(p => p.id === item.produkId)
     if (produk) produk.stok -= item.jumlah
@@ -234,14 +229,40 @@ function simpanTransaksi() {
     transaksiList.value.unshift({ id: Date.now(), ...data })
   }
 
+  // Sinkronisasi otomatis ke Dashboard via localStorage
+  localStorage.setItem('transactionsList', JSON.stringify(transaksiList.value))
+  localStorage.setItem('productsList', JSON.stringify(
+    produkList.value.map(p => ({
+      id: p.id,
+      name: p.nama,
+      variant: p.varian,
+      price: p.harga,
+      stock: p.stok,
+      image: p.image || ''
+    }))
+  ))
+
   tutupForm(tanggal.value === hariIni ? 'hari-ini' : 'riwayat')
-  alert(sedangEdit ? 'Transaksi berhasil diperbarui!' : 'Transaksi berhasil dicatat!')
+  alert(sedangEdit ? 'Transaksi berhasil diperbarui dan disinkronkan ke Dashboard!' : 'Transaksi berhasil dicatat dan disinkronkan ke Dashboard!')
 }
 
 function hapusTransaksi(transaksi) {
   if (!confirm('Hapus transaksi ini? Stok produk akan dikembalikan.')) return
   kembalikanStok(transaksi)
   transaksiList.value = transaksiList.value.filter(t => t.id !== transaksi.id)
+
+  // Sinkronisasi otomatis penghapusan ke Dashboard via localStorage
+  localStorage.setItem('transactionsList', JSON.stringify(transaksiList.value))
+  localStorage.setItem('productsList', JSON.stringify(
+    produkList.value.map(p => ({
+      id: p.id,
+      name: p.nama,
+      variant: p.varian,
+      price: p.harga,
+      stock: p.stok,
+      image: p.image || ''
+    }))
+  ))
 }
 
 function bukaForm() {
@@ -451,9 +472,9 @@ function tutupForm(tab) {
 
 <style scoped>
 .transaksi-container {
-  padding: 16px 20px 100px; /* bawah diberi ruang untuk navbar */
+  padding: 16px 20px 100px;
   min-height: 100vh;
-  background: #f8f6f2; /* beda dari header putih, sama seperti Profil */
+  background: #f8f6f2;
   max-width: 600px;
   margin: 0 auto;
   color: #111;
@@ -688,7 +709,7 @@ select {
 }
 
 .quantity-control {
-  display: flex;
+  default: flex;
   align-items: center;
   gap: 20px;
   border: 2px solid #d9dce5;
