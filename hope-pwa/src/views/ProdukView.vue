@@ -203,6 +203,14 @@ const filteredProducts = computed(() => {
   return productList.value.filter(p => p.category.toLowerCase() === selectedCategoryFilter.value.toLowerCase())
 })
 
+const toggleForm = () => {
+  if (showForm.value) {
+    resetForm()
+  } else {
+    showForm.value = true
+  }
+}
+
 const saveProduct = () => {
   if (!form.value.name || form.value.price === '') {
     alert('Mohon isi minimal Nama Produk dan Harga Jual!')
@@ -211,7 +219,7 @@ const saveProduct = () => {
 
   const productData = {
     id: editingProductId.value || Date.now(),
-    image: form.value.image,
+    image: form.value.image || '/images/icons8-new-product-50.png',
     name: form.value.name,
     category: form.value.category.trim() || 'Umum',
     variant: form.value.variant.trim() || 'Original',
@@ -267,12 +275,12 @@ const editProduct = (product) => {
   showForm.value = true
   
   form.value = {
-    image: product.image || '',
+    image: product.image && product.image !== '/images/icons8-new-product-50.png' ? product.image : '',
     name: product.name || '',
     category: product.category || '',
     variant: product.variant || '',
-    price: product.price ? product.price.toLocaleString('id-ID') : '',
-    cost: product.costing ? product.costing.totalCost.toLocaleString('id-ID') : '',
+    price: product.price ? Number(product.price).toLocaleString('id-ID') : '',
+    cost: product.costing ? Number(product.costing.totalCost || 0).toLocaleString('id-ID') : '',
     stock: product.stock || 0,
     minStock: product.minStock || 0
   }
@@ -347,7 +355,7 @@ watch(() => form.value.cost, (newValue) => {
           </div>
         </div>
 
-        <button @click="resetForm(); showForm = !showForm" class="action-btn">
+        <button @click="toggleForm" class="action-btn">
           {{ showForm ? 'Batal' : '+ Tambah Produk' }}
         </button>
       </div>
@@ -419,7 +427,7 @@ watch(() => form.value.cost, (newValue) => {
         </div>
       </div>
 
-      <!-- Pilihan Kategori HPP (Tombol Tab Besar) -->
+      <!-- Pilihan Kategori HPP -->
       <div class="card sub-card hpp-section">
         <label class="section-label">Modal / Biaya Produksi</label>
         
@@ -456,7 +464,7 @@ watch(() => form.value.cost, (newValue) => {
             <div v-for="ing in productIngredients" :key="ing.id" class="ing-row">
               <div>
                 <strong>{{ ing.name }}</strong> 
-                <span class="ing-subtext">(Pakai: {{ ing.qtyUsed }} {{ ing.unit }} dari Total Isi {{ ing.packCapacity }} {{ ing.packUnit }} seharga Rp {{ Number(ing.packPrice).toLocaleString('id-ID') }})</span>
+                <span class="ing-subtext">(Pakai: {{ ing.qtyUsed }} {{ ing.unit }} dari Total Isi {{ ing.packCapacity }} {{ ing.packUnit }} seharga Rp {{ Number(ing.packPrice || 0).toLocaleString('id-ID') }})</span>
               </div>
               <div class="ing-right">
                   <span class="ing-computed-price">Rp {{ Math.round(calculateIngredientCost(ing)).toLocaleString('id-ID') }}</span>
@@ -469,7 +477,7 @@ watch(() => form.value.cost, (newValue) => {
             </div>
           </div>
 
-          <!-- Form Input Detail Bahan Proporsional -->
+          <!-- Form Input Bahan -->
           <div class="ingredient-input-container">
             <div class="input-group mb-8">
               <label class="sub-label">Pilih / Nama Bahan</label>
@@ -485,7 +493,7 @@ watch(() => form.value.cost, (newValue) => {
               <button type="button" @click="saveNewIngredient" class="sub-save-btn">Simpan Bahan</button>
             </div>
 
-            <!-- Baris 1: Harga Bahan (Beli) & Total Bahan (Isi Kemasan + Satuan Ramping) -->
+            <!-- Harga Bahan dan Total Bahan -->
             <div class="row-group mb-8">
               <div class="input-group half">
                 <label class="sub-label">Harga Bahan (Beli)</label>
@@ -502,7 +510,7 @@ watch(() => form.value.cost, (newValue) => {
               </div>
             </div>
 
-            <!-- Baris 2: Pemakaian (Sekali Buat) + Satuan Ramping -->
+            <!-- Pemakaian Sekali Buat -->
             <div class="input-group mb-8">
               <label class="sub-label">Pemakaian (Sekali Buat)</label>
               <div class="inline-flex">
@@ -550,7 +558,7 @@ watch(() => form.value.cost, (newValue) => {
         </div>
       </div>
 
-      <!-- Tombol Update Perubahan (Warna Hijau & Besar) -->
+      <!-- Tombol Update Perubahan -->
       <button @click="saveProduct" class="save-btn">
         {{ editingProductId ? 'Update Perubahan' : 'Simpan Produk' }}
       </button>
@@ -567,10 +575,7 @@ watch(() => form.value.cost, (newValue) => {
       <div v-for="product in filteredProducts" :key="product.id" class="card product-card" :class="{ 'editing': editingProductId === product.id }">
         <div class="product-info-wrapper">
           <div class="prod-thumb-container" @click="$refs['fileInputList_' + product.id]?.[0]?.click()" title="Klik untuk ganti gambar">
-            <img v-if="product.image" :src="product.image" class="prod-thumb" />
-            <div v-else class="prod-thumb-placeholder">
-              <img src="/images/icons8-new-product-50.png" alt="New Product" class="prod-default-icon" />
-            </div>
+            <img :src="product.image || '/images/icons8-new-product-50.png'" class="prod-thumb" />
           </div>
 
           <input 
@@ -584,7 +589,10 @@ watch(() => form.value.cost, (newValue) => {
           <div class="prod-text-content">
             <h4 class="prod-name">{{ product.name }}</h4>
             <span class="badge">({{ product.category }} - {{ product.variant }})</span>
-            <p class="prod-detail">Jual: Rp {{ product.price.toLocaleString() }} | Modal: Rp {{ product.costing ? product.costing.totalCost.toLocaleString() : '0' }}</p>
+            <p class="prod-detail">
+              Jual: Rp {{ Number(product.price || 0).toLocaleString('id-ID') }} | 
+              Modal: Rp {{ Number(product.costing?.totalCost || 0).toLocaleString('id-ID') }}
+            </p>
             <p class="prod-detail">Stok: <strong>{{ product.stock }}</strong> (Min: {{ product.minStock }})</p>
           </div>
         </div>
@@ -613,10 +621,12 @@ input.no-spinner {
   max-width: 600px;
   margin: 0 auto;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background-color: #fbf9f5;
+  background-color: #ffffff;
   min-height: 100vh;
   box-sizing: border-box;
   padding-bottom: 90px;
+  position: relative;
+  z-index: 1;
 }
 
 .header-nav {
@@ -625,12 +635,16 @@ input.no-spinner {
   align-items: center;
   margin-bottom: 16px;
   position: relative;
+  z-index: 50;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  position: relative;
+  z-index: 51;
+  pointer-events: auto;
 }
 
 .page-title {
@@ -642,6 +656,8 @@ input.no-spinner {
 
 .filter-wrapper {
   position: relative;
+  z-index: 52;
+  pointer-events: auto;
 }
 
 .filter-dropdown-menu {
@@ -655,6 +671,7 @@ input.no-spinner {
   width: 160px;
   z-index: 100;
   overflow: hidden;
+  pointer-events: auto;
 }
 
 .filter-item {
@@ -663,6 +680,7 @@ input.no-spinner {
   color: #1e272e;
   cursor: pointer;
   border-bottom: 1px solid #f1f2f6;
+  pointer-events: auto;
 }
 
 .filter-item:hover {
@@ -695,6 +713,7 @@ input.no-spinner {
   border-radius: 4px;
   font-size: 10px;
   cursor: pointer;
+  pointer-events: auto;
 }
 
 .card {
@@ -715,6 +734,7 @@ input.no-spinner {
   background-color: #f0f8ff;
   cursor: pointer;
   margin-bottom: 16px;
+  pointer-events: auto;
 }
 
 .upload-placeholder {
@@ -739,6 +759,7 @@ input.no-spinner {
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: auto !important;
 }
 
 .icon-asset-small {
@@ -829,6 +850,7 @@ input.no-spinner {
   font-size: 13px;
   background-color: #fff;
   color: #1e272e;
+  pointer-events: auto;
 }
 
 .add-new-option {
@@ -857,6 +879,7 @@ input.no-spinner {
   font-weight: bold;
   cursor: pointer;
   white-space: nowrap;
+  pointer-events: auto;
 }
 
 .row-group {
@@ -879,13 +902,13 @@ input.no-spinner {
   min-width: 0;
 }
 
-/* Tombol satuan diperkecil dan dirampingkan agar kolom angka lebih luas */
 .compact-unit {
   width: 65px !important;
   flex-shrink: 0;
   padding: 10px 4px !important;
   font-size: 11px !important;
   text-align: center;
+  pointer-events: auto;
 }
 
 .ingredient-input-container {
@@ -906,9 +929,11 @@ input.no-spinner {
   font-weight: bold;
   cursor: pointer;
   white-space: nowrap;
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 2;
 }
 
-/* Tombol Utama & Tombol Tambah Bahan (Warna Hijau & Ukuran Sama Persis) */
 .save-btn {
   width: 100%;
   background-color: #2ed573;
@@ -920,6 +945,7 @@ input.no-spinner {
   font-weight: bold;
   cursor: pointer;
   margin: 12px 0;
+  pointer-events: auto;
 }
 
 .section-title {
@@ -967,27 +993,17 @@ input.no-spinner {
   border-radius: 6px;
   overflow: hidden;
   flex-shrink: 0;
+  background: #f1f2f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
 }
 
 .prod-thumb {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.prod-thumb-placeholder {
-  width: 100%;
-  height: 100%;
-  background: #f1f2f6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.prod-default-icon {
-  width: 26px;
-  height: 26px;
-  object-fit: contain;
 }
 
 .prod-text-content {
@@ -1025,6 +1041,7 @@ input.no-spinner {
   display: flex;
   gap: 6px;
   flex-shrink: 0;
+  pointer-events: auto;
 }
 
 .delete-btn {
@@ -1035,6 +1052,7 @@ input.no-spinner {
   border-radius: 10px;
   cursor: pointer;
   flex-shrink: 0;
+  pointer-events: auto;
 }
 
 .edit-btn {
@@ -1045,6 +1063,7 @@ input.no-spinner {
   border-radius: 10px;
   cursor: pointer;
   flex-shrink: 0;
+  pointer-events: auto;
 }
 
 .mt-12 {
@@ -1076,7 +1095,6 @@ input.no-spinner {
   margin-bottom: 10px;
 }
 
-/* Styling Tombol Tab Pilihan HPP (Diperbesar Ukurannya) */
 .hpp-button-group {
   display: flex;
   gap: 10px;
@@ -1094,6 +1112,7 @@ input.no-spinner {
   cursor: pointer;
   text-align: center;
   transition: all 0.2s ease;
+  pointer-events: auto;
 }
 
 .hpp-tab-btn:hover {
@@ -1147,6 +1166,7 @@ input.no-spinner {
   font-weight: bold;
   cursor: pointer;
   padding: 0 4px;
+  pointer-events: auto;
 }
 
 .ing-total {
