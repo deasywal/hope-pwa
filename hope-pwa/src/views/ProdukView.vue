@@ -7,22 +7,27 @@ const showFilterDropdown = ref(false)
 const selectedCategoryFilter = ref('')
 const editingProductId = ref(null)
 
-// Utuk HPP terperinci & hasil jadi
 const costInputMode = ref('total') 
 const productIngredients = ref([])
 
-// Daftar bahan baku & opsi tambah baru
-const ingredientOptions = ref(['Pisang', 'Terigu', 'Minyak', 'Gula', 'Telur', 'Cokelat', 'Sly/Selai', 'Standing Pouch'])
+const ingredientOptions = ref(['Pisang', 'Terigu', 'Minyak', 'Gula', 'Telur', 'Cokelat', 'Selai', 'Cup Agar', 'Standing Pouch'])
 const isAddingIngredient = ref(false)
 const newIngredientInput = ref('')
 
-const tempIngredient = ref({ name: '', quantity: '', unit: 'kg', price: '' })
+const tempIngredient = ref({ 
+  name: '', 
+  qtyUsed: '',     
+  unit: 'pcs',     
+  packPrice: '',   
+  packCapacity: '',
+  packUnit: 'pcs'  
+})
+
 const batchOutputQty = ref(1)
 
-// Daftar pilihan kategori & varian
 const categoryOptions = ref(['Makanan', 'Minuman', 'Cemilan'])
 const variantOptions = ref(['Original', 'Coklat', 'Stroberi', 'Matcha', 'Keju'])
-const unitOptions = ref(['kg', 'gr', 'ons', 'liter', 'ml', 'pcs'])
+const unitOptions = ref(['pcs', 'kg', 'gr', 'ons', 'liter', 'ml', 'bungkus'])
 
 const isAddingCategory = ref(false)
 const newCategoryInput = ref('')
@@ -52,7 +57,6 @@ onMounted(() => {
   }
 })
 
-// Fungsi handle pemilihan Nama Bahan (cek jika pilih Tambah Baru)
 const handleIngredientChange = (event) => {
   if (event.target.value === 'ADD_NEW') {
     isAddingIngredient.value = true
@@ -62,7 +66,6 @@ const handleIngredientChange = (event) => {
   }
 }
 
-// Untuk Penyimpanan Bahan Baru Ke Pilihan Dropdown
 const saveNewIngredient = () => {
   if (newIngredientInput.value.trim() !== '') {
     const formatted = newIngredientInput.value.trim()
@@ -75,8 +78,26 @@ const saveNewIngredient = () => {
   }
 }
 
+const calculateIngredientCost = (ing) => {
+  const price = Number(ing.packPrice) || 0
+  let capacity = Number(ing.packCapacity) || 1
+  let used = Number(ing.qtyUsed) || 0
+
+  if (ing.packUnit === 'kg' && ing.unit === 'gr') {
+    capacity = capacity * 1000
+  } else if (ing.packUnit === 'gr' && ing.unit === 'kg') {
+    used = used * 1000
+  } else if (ing.packUnit === 'liter' && ing.unit === 'ml') {
+    capacity = capacity * 1000
+  } else if (ing.packUnit === 'ml' && ing.unit === 'liter') {
+    used = used * 1000
+  }
+
+  return (price / capacity) * used
+}
+
 const calculatedTotalCostFromDetails = computed(() => {
-  return productIngredients.value.reduce((sum, ing) => sum + (Number(ing.price) || 0), 0)
+  return productIngredients.value.reduce((sum, ing) => sum + calculateIngredientCost(ing), 0)
 })
 
 const calculatedCostPerPcs = computed(() => {
@@ -93,15 +114,15 @@ const finalCost = computed(() => {
 })
 
 const addIngredientToList = () => {
-  if (!tempIngredient.value.name || !tempIngredient.value.quantity || !tempIngredient.value.price) {
-    alert('Mohon lengkapi Nama Bahan, Jumlah, dan Harga Beli!')
+  if (!tempIngredient.value.name || !tempIngredient.value.qtyUsed || !tempIngredient.value.packPrice || !tempIngredient.value.packCapacity) {
+    alert('Mohon lengkapi detail bahan, harga beli, total isi kemasan, dan jumlah pakai!')
     return
   }
   productIngredients.value.push({
     id: Date.now(),
     ...tempIngredient.value
   })
-  tempIngredient.value = { name: '', quantity: '', unit: 'kg', price: '' }
+  tempIngredient.value = { name: '', qtyUsed: '', unit: 'pcs', packPrice: '', packCapacity: '', packUnit: 'pcs' }
   isAddingIngredient.value = false
 }
 
@@ -227,7 +248,7 @@ const resetForm = () => {
   editingProductId.value = null
   costInputMode.value = 'total'
   productIngredients.value = []
-  tempIngredient.value = { name: '', quantity: '', unit: 'kg', price: '' }
+  tempIngredient.value = { name: '', qtyUsed: '', unit: 'pcs', packPrice: '', packCapacity: '', packUnit: 'pcs' }
   batchOutputQty.value = 1
   isAddingIngredient.value = false
 }
@@ -398,19 +419,27 @@ watch(() => form.value.cost, (newValue) => {
         </div>
       </div>
 
-      <!-- Pilihan Katagori Hpp -->
+      <!-- Pilihan Kategori HPP (Tombol Tab Besar) -->
       <div class="card sub-card hpp-section">
         <label class="section-label">Modal / Biaya Produksi</label>
         
-        <div class="hpp-radio-group">
-          <label class="radio-option">
-            <input type="radio" v-model="costInputMode" value="total" />
-            <span>Masukkan Modal Total</span>
-          </label>
-          <label class="radio-option">
-            <input type="radio" v-model="costInputMode" value="detail" />
-            <span>Modal Terperinci (Bahan Baku)</span>
-          </label>
+        <div class="hpp-button-group">
+          <button 
+            type="button" 
+            class="hpp-tab-btn" 
+            :class="{ active: costInputMode === 'total' }" 
+            @click="costInputMode = 'total'"
+          >
+            Modal Total
+          </button>
+          <button 
+            type="button" 
+            class="hpp-tab-btn" 
+            :class="{ active: costInputMode === 'detail' }" 
+            @click="costInputMode = 'detail'"
+          >
+            HPP Terperinci (Bahan)
+          </button>
         </div>
 
         <!-- Mode Total -->
@@ -421,50 +450,76 @@ watch(() => form.value.cost, (newValue) => {
 
         <!-- Mode Terperinci -->
         <div v-if="costInputMode === 'detail'" class="input-group mt-12 detail-box">
-          <label>Daftar Bahan Baku</label>
+          <label>Daftar Bahan Baku & Kemasan</label>
           
           <div v-if="productIngredients.length > 0" class="ingredient-table">
             <div v-for="ing in productIngredients" :key="ing.id" class="ing-row">
-              <span><strong>{{ ing.name }}</strong> ({{ ing.quantity }} {{ ing.unit }})</span>
+              <div>
+                <strong>{{ ing.name }}</strong> 
+                <span class="ing-subtext">(Pakai: {{ ing.qtyUsed }} {{ ing.unit }} dari Total Isi {{ ing.packCapacity }} {{ ing.packUnit }} seharga Rp {{ Number(ing.packPrice).toLocaleString('id-ID') }})</span>
+              </div>
               <div class="ing-right">
-                  <span>Rp {{ Number(ing.price).toLocaleString('id-ID') }}</span>
+                  <span class="ing-computed-price">Rp {{ Math.round(calculateIngredientCost(ing)).toLocaleString('id-ID') }}</span>
                   <button type="button" @click="deleteIngredient(ing.id)" class="ing-delete-btn">×</button>
               </div>
             </div>
             <div class="ing-total">
                 <span>Total Modal Semua Bahan:</span>
-                <strong>Rp {{ calculatedTotalCostFromDetails.toLocaleString('id-ID') }}</strong>
+                <strong>Rp {{ Math.round(calculatedTotalCostFromDetails).toLocaleString('id-ID') }}</strong>
             </div>
           </div>
 
-          <!-- Input Bahan Baku Dan Tambah Bahan Baku -->
-          <div class="sub-input-box multi-input">
-            <select v-model="tempIngredient.name" @change="handleIngredientChange" class="input-field sub-field">
-              <option disabled value="">Pilih Bahan</option>
-              <option v-for="ingOpt in ingredientOptions" :key="ingOpt" :value="ingOpt">{{ ingOpt }}</option>
-              <option value="ADD_NEW" class="add-new-option">+ Tambah Bahan Baru...</option>
-            </select>
+          <!-- Form Input Detail Bahan Proporsional -->
+          <div class="ingredient-input-container">
+            <div class="input-group mb-8">
+              <label class="sub-label">Pilih / Nama Bahan</label>
+              <select v-model="tempIngredient.name" @change="handleIngredientChange" class="input-field">
+                <option disabled value="">Pilih Bahan / Kemasan</option>
+                <option v-for="ingOpt in ingredientOptions" :key="ingOpt" :value="ingOpt">{{ ingOpt }}</option>
+                <option value="ADD_NEW" class="add-new-option">+ Tambah Bahan Baru...</option>
+              </select>
+            </div>
 
-            <input v-model="tempIngredient.quantity" type="number" placeholder="Jumlah" class="input-field sub-field small no-spinner" />
-            
-            <select v-model="tempIngredient.unit" class="input-field sub-field small">
-                <option v-for="u in unitOptions" :key="u" :value="u">{{ u }}</option>
-            </select>
+            <div v-if="isAddingIngredient" class="sub-input-box mb-8">
+              <input v-model="newIngredientInput" type="text" placeholder="Ketik nama bahan baru..." class="input-field sub-field" />
+              <button type="button" @click="saveNewIngredient" class="sub-save-btn">Simpan Bahan</button>
+            </div>
 
-            <input v-model="tempIngredient.price" type="number" placeholder="Harga (Rp)" class="input-field sub-field no-spinner" />
-            
-            <button type="button" @click="addIngredientToList" class="sub-save-btn add-ing-btn">+</button>
+            <!-- Baris 1: Harga Bahan (Beli) & Total Bahan (Isi Kemasan + Satuan Ramping) -->
+            <div class="row-group mb-8">
+              <div class="input-group half">
+                <label class="sub-label">Harga Bahan (Beli)</label>
+                <input v-model="tempIngredient.packPrice" type="number" placeholder="Contoh: 10000" class="input-field no-spinner" />
+              </div>
+              <div class="input-group half">
+                <label class="sub-label">Total Bahan (Isi Kemasan)</label>
+                <div class="inline-flex">
+                  <input v-model="tempIngredient.packCapacity" type="number" placeholder="Contoh: 1000" class="input-field no-spinner qty-input" />
+                  <select v-model="tempIngredient.packUnit" class="unit-select compact-unit">
+                    <option v-for="u in unitOptions" :key="u" :value="u">{{ u }}</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Baris 2: Pemakaian (Sekali Buat) + Satuan Ramping -->
+            <div class="input-group mb-8">
+              <label class="sub-label">Pemakaian (Sekali Buat)</label>
+              <div class="inline-flex">
+                <input v-model="tempIngredient.qtyUsed" type="number" placeholder="Contoh: 250" class="input-field no-spinner qty-input" />
+                <select v-model="tempIngredient.unit" class="unit-select compact-unit">
+                  <option v-for="u in unitOptions" :key="u" :value="u">{{ u }}</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Tombol Tambah ke Daftar Bahan -->
+            <button type="button" @click="addIngredientToList" class="save-btn">+ Masukkan ke Daftar Bahan</button>
           </div>
 
-          <!-- Sub Input Jika Pilih Tambah Bahan Baru -->
-          <div v-if="isAddingIngredient" class="sub-input-box mt-8">
-            <input v-model="newIngredientInput" type="text" placeholder="Ketik nama bahan baru..." class="input-field sub-field" />
-            <button type="button" @click="saveNewIngredient" class="sub-save-btn">Simpan Bahan</button>
-          </div>
-
-          <!-- Inpun Hasil Jadi Per pCS -->
+          <!-- Input Hasil Jadi Per Pcs -->
           <div class="batch-output-box mt-12">
-            <label>Berapa Total Produk Yang Dihasilkan</label>
+            <label>Berapa Total Produk yang Dihasilkan dari Resep Ini?</label>
             <div class="batch-flex">
               <input v-model="batchOutputQty" type="number" min="1" placeholder="Contoh: 10" class="input-field no-spinner" />
               <span class="unit-pcs">Pcs</span>
@@ -495,6 +550,7 @@ watch(() => form.value.cost, (newValue) => {
         </div>
       </div>
 
+      <!-- Tombol Update Perubahan (Warna Hijau & Besar) -->
       <button @click="saveProduct" class="save-btn">
         {{ editingProductId ? 'Update Perubahan' : 'Simpan Produk' }}
       </button>
@@ -742,12 +798,26 @@ input.no-spinner {
   margin-bottom: 12px;
 }
 
+.input-group.mb-8 {
+  margin-bottom: 8px;
+}
+
 .input-group label {
   display: block;
   font-size: 12px;
   color: #1e272e;
   margin-bottom: 6px;
   font-weight: bold;
+}
+
+.sub-label {
+  font-size: 11px;
+  color: #57606f;
+  margin-bottom: 4px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .input-field {
@@ -798,6 +868,34 @@ input.no-spinner {
   flex: 1;
 }
 
+.inline-flex {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.qty-input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Tombol satuan diperkecil dan dirampingkan agar kolom angka lebih luas */
+.compact-unit {
+  width: 65px !important;
+  flex-shrink: 0;
+  padding: 10px 4px !important;
+  font-size: 11px !important;
+  text-align: center;
+}
+
+.ingredient-input-container {
+  background: #ffffff;
+  border: 1px solid #dcdde1;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
 .action-btn {
   background-color: #5352ed;
   color: white;
@@ -810,9 +908,10 @@ input.no-spinner {
   white-space: nowrap;
 }
 
+/* Tombol Utama & Tombol Tambah Bahan (Warna Hijau & Ukuran Sama Persis) */
 .save-btn {
   width: 100%;
-  background-color: #5352ed;
+  background-color: #2ed573;
   color: white;
   border: none;
   padding: 15px;
@@ -977,33 +1076,34 @@ input.no-spinner {
   margin-bottom: 10px;
 }
 
-.hpp-radio-group {
+/* Styling Tombol Tab Pilihan HPP (Diperbesar Ukurannya) */
+.hpp-button-group {
   display: flex;
-  gap: 16px;
-  font-size: 12px;
-  color: #1e272e;
+  gap: 10px;
 }
 
-.radio-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.hpp-tab-btn {
+  flex: 1;
+  padding: 14px 16px;
+  background-color: #ffffff;
+  border: 1px solid #dcdde1;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #57606f;
   cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
 }
 
-.multi-input {
-  display: flex;
-  gap: 6px !important;
-  align-items: center;
+.hpp-tab-btn:hover {
+  background-color: #f1f2f6;
 }
 
-.sub-field.small {
-  flex: 0 0 80px;
-}
-
-.add-ing-btn {
-  padding: 0 16px !important;
-  height: 38px;
+.hpp-tab-btn.active {
+  background-color: #5352ed;
+  color: #ffffff;
+  border-color: #5352ed;
 }
 
 .ingredient-table {
@@ -1017,14 +1117,26 @@ input.no-spinner {
 .ing-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   padding: 8px 12px;
   border-bottom: 1px solid #f1f2f6;
+}
+
+.ing-subtext {
+  display: block;
+  font-size: 10px;
+  color: #718093;
 }
 
 .ing-right {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.ing-computed-price {
+  font-weight: bold;
+  color: #2f3640;
 }
 
 .ing-delete-btn {
@@ -1079,5 +1191,11 @@ input.no-spinner {
 .highlight-cost {
   color: #27ae60;
   font-size: 13px;
+}
+
+.hint-text {
+  font-size: 10px;
+  color: #718093;
+  margin: 0;
 }
 </style>
