@@ -443,7 +443,7 @@ const editProduct = (product) => {
             :class="{ active: costInputMode === 'detail' }" 
             @click="costInputMode = 'detail'"
           >
-            HPP Terperinci (Bahan)
+            Modal Terperinci
           </button>
         </div>
 
@@ -517,7 +517,7 @@ const editProduct = (product) => {
           </div>
 
           <div class="batch-output-box mt-12">
-            <label>Berapa Total Produk yang Dihasilkan dari Resep Ini?</label>
+            <label>Berapa Total Produk yang Dihasilkan dari Bahan Ini?</label>
             <div class="batch-flex">
               <input v-model="batchOutputQty" type="number" min="1" placeholder="Contoh: 10" class="input-field no-spinner" />
               <span class="unit-pcs">Pcs</span>

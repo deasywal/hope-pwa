@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 
-// ===== Helper tanggal (waktu lokal, bukan UTC) =====
+// ===== Helper tanggal (waktu lokal) =====
 function tanggalLokal() {
   const d = new Date()
   const pad = n => String(n).padStart(2, '0')
@@ -29,30 +29,17 @@ const halaman = ref('transaksi')
 const tabAktif = ref('hari-ini')
 
 // ===== Data produk =====
-const produkList = ref([
-  { id: 1, nama: 'Keripik Pisang', varian: 'Strawberry', harga: 5000, stok: 20 },
-  { id: 2, nama: 'Keripik Pisang', varian: 'Coklat', harga: 5000, stok: 15 },
-  { id: 3, nama: 'Keripik Pisang', varian: 'Matcha', harga: 5000, stok: 25 }
-])
+const produkList = ref([])
 
-// ===== Riwayat penjualan (tanggal format YYYY-MM-DD) =====
-const transaksiList = ref([
-  {
-    id: 1,
-    tanggal: '2026-09-23',
-    items: [
-      { produkId: 1, nama: 'Keripik Pisang', varian: 'Strawberry', jumlah: 5, harga: 5000, subtotal: 25000 }
-    ],
-    total: 25000
-  }
-])
+// ===== Riwayat penjualan =====
+const transaksiList = ref([])
 
 // ===== State form catat penjualan =====
 const tanggal = ref(hariIni)
-const produkDipilihId = ref(1)
+const produkDipilihId = ref(null)
 const jumlah = ref(1)
 const keranjang = ref([])
-const editId = ref(null) // null = catat baru, isi = sedang edit transaksi
+const editId = ref(null)
 
 onMounted(() => {
   const savedProducts = localStorage.getItem('productsList')
@@ -66,7 +53,8 @@ onMounted(() => {
           varian: p.variant,
           harga: p.price,
           stok: p.stock,
-          image: p.image || ''
+          image: p.image || '',
+          hpp: Number(p.costing?.totalCost ?? p.cost ?? 0) || 0
         }))
         produkDipilihId.value = produkList.value[0].id
       }
@@ -132,11 +120,31 @@ function stokTersedia(produkId) {
 
 const stokMaks = computed(() => stokTersedia(Number(produkDipilihId.value)))
 
+function gambarItem(item) {
+  return produkList.value.find(p => p.id === item.produkId)?.image || ''
+}
+
 function kembalikanStok(transaksi) {
   transaksi.items.forEach(item => {
     const produk = produkList.value.find(p => p.id === item.produkId)
     if (produk) produk.stok += item.jumlah
   })
+}
+
+function simpanStokProduk() {
+  let raw = []
+  try {
+    raw = JSON.parse(localStorage.getItem('productsList')) || []
+  } catch {
+    raw = []
+  }
+  if (!Array.isArray(raw)) raw = []
+
+  raw.forEach(p => {
+    const lokal = produkList.value.find(x => x.id === p.id)
+    if (lokal) p.stock = lokal.stok
+  })
+  localStorage.setItem('productsList', JSON.stringify(raw))
 }
 
 function tambahJumlah() {
@@ -177,6 +185,7 @@ function tambahItem() {
     varian: produk.varian,
     jumlah: qty.value,
     harga: produk.harga,
+    hpp: produk.hpp,
     subtotal: subtotal.value
   })
 
@@ -218,7 +227,10 @@ function simpanTransaksi() {
 
   const data = {
     tanggal: tanggal.value,
-    items: keranjang.value.map(i => ({ ...i })),
+    items: keranjang.value.map(i => ({
+      ...i,
+      hpp: i.hpp ?? produkList.value.find(p => p.id === i.produkId)?.hpp ?? 0
+    })),
     total: totalTransaksi.value
   }
 
@@ -229,18 +241,8 @@ function simpanTransaksi() {
     transaksiList.value.unshift({ id: Date.now(), ...data })
   }
 
-  // Sinkronisasi otomatis ke Dashboard via localStorage
   localStorage.setItem('transactionsList', JSON.stringify(transaksiList.value))
-  localStorage.setItem('productsList', JSON.stringify(
-    produkList.value.map(p => ({
-      id: p.id,
-      name: p.nama,
-      variant: p.varian,
-      price: p.harga,
-      stock: p.stok,
-      image: p.image || ''
-    }))
-  ))
+  simpanStokProduk()
 
   tutupForm(tanggal.value === hariIni ? 'hari-ini' : 'riwayat')
   alert(sedangEdit ? 'Transaksi berhasil diperbarui dan disinkronkan ke Dashboard!' : 'Transaksi berhasil dicatat dan disinkronkan ke Dashboard!')
@@ -251,18 +253,8 @@ function hapusTransaksi(transaksi) {
   kembalikanStok(transaksi)
   transaksiList.value = transaksiList.value.filter(t => t.id !== transaksi.id)
 
-  // Sinkronisasi otomatis penghapusan ke Dashboard via localStorage
   localStorage.setItem('transactionsList', JSON.stringify(transaksiList.value))
-  localStorage.setItem('productsList', JSON.stringify(
-    produkList.value.map(p => ({
-      id: p.id,
-      name: p.nama,
-      variant: p.varian,
-      price: p.harga,
-      stock: p.stok,
-      image: p.image || ''
-    }))
-  ))
+  simpanStokProduk()
 }
 
 function bukaForm() {
@@ -270,6 +262,9 @@ function bukaForm() {
   keranjang.value = []
   jumlah.value = 1
   tanggal.value = hariIni
+  if (produkDipilihId.value === null) {
+    produkDipilihId.value = produkList.value[0]?.id ?? null
+  }
   halaman.value = 'form'
 }
 
@@ -277,7 +272,7 @@ function mulaiEdit(transaksi) {
   editId.value = transaksi.id
   keranjang.value = transaksi.items.map(i => ({ ...i }))
   tanggal.value = transaksi.tanggal
-  produkDipilihId.value = produkList.value[0]?.id ?? 1
+  produkDipilihId.value = produkList.value[0]?.id ?? null
   jumlah.value = 1
   halaman.value = 'form'
 }
@@ -314,7 +309,8 @@ function tutupForm(tab) {
         </button>
       </div>
 
-      <div v-if="tabAktif === 'hari-ini'" class="summary-card">
+      <!-- Kartu Penjualan Hari Ini (Diberi Border Biru Khusus) -->
+      <div v-if="tabAktif === 'hari-ini'" class="summary-card summary-card-blue-border">
         <h3 class="summary-title">
           <svg class="summary-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -343,6 +339,11 @@ function tutupForm(tab) {
         <p>Daftar keseluruhan transaksi yang tercatat.</p>
       </div>
 
+      <!-- Tombol Catat Penjualan di Bawah Kartu Penjualan Hari Ini -->
+      <button class="primary-button" @click="bukaForm">
+        + Catat Penjualan
+      </button>
+
       <h3 class="section-title">Detail Penjualan</h3>
 
       <p v-if="transaksiTampil.length === 0" class="empty-info">
@@ -360,7 +361,7 @@ function tutupForm(tab) {
           class="item-info item-row"
         >
           <div class="product-placeholder">
-            <img v-if="item.image" :src="item.image" alt="Prod" class="tx-thumb" />
+            <img v-if="gambarItem(item)" :src="gambarItem(item)" alt="Prod" class="tx-thumb" />
           </div>
           <div class="product-detail">
             <strong>{{ item.nama }} - {{ item.varian }}</strong>
@@ -393,19 +394,19 @@ function tutupForm(tab) {
           </button>
         </div>
       </div>
-
-      <button class="primary-button" @click="bukaForm">
-        + Catat Penjualan
-      </button>
     </template>
 
-    <!-- HALAMAN FORM CATAT PENJUALAN -->
+    <!-- Halaman form Penjualan -->
     <template v-else>
       <button class="back-button" @click="tutupForm()">
         ← Kembali
       </button>
 
       <h2>{{ editId !== null ? 'Edit Penjualan' : 'Catat Penjualan' }}</h2>
+
+      <p v-if="produkList.length === 0" class="empty-info">
+        Belum ada produk. Tambahkan produk dulu di tab Produk.
+      </p>
 
       <label>Tanggal</label>
       <input type="date" v-model="tanggal" />
@@ -471,7 +472,6 @@ function tutupForm(tab) {
 </template>
 
 <style scoped>
-/* Hilangkan efek highlight biru di HP dan outline fokus browser */
 * {
   -webkit-tap-highlight-color: transparent;
 }
@@ -548,6 +548,12 @@ h2 {
   padding: 16px 18px;
   margin-bottom: 14px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+/* Border Biru khusus untuk kartu Penjualan Hari Ini */
+.summary-card-blue-border {
+  border: 2px solid #7477ee !important;
+  box-shadow: 0 2px 6px rgba(116, 119, 238, 0.15) !important;
 }
 
 .summary-card h3 {

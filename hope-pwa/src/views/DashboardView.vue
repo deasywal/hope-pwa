@@ -8,7 +8,7 @@ const totalKeuntungan = ref(0)
 const totalModal = ref(0)
 const hasTransactions = ref(false)
 
-// ===== Helper tanggal lokal (anti-UTC shift) =====
+// ===== Helper tanggal lokal =====
 function tanggalLokal(date = new Date()) {
   const pad = n => String(n).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
@@ -35,7 +35,7 @@ onMounted(() => {
   loadDashboardData(todayIso)
 })
 
-// ===== Fungsi Load & Hitung Keuangan Berdasarkan HPP Asli =====
+// ===== Fungsi Load & Hitung Keuangan =====
 function loadDashboardData(dateStr) {
   try {
     const savedTransactions = localStorage.getItem('transactionsList')
@@ -47,7 +47,11 @@ function loadDashboardData(dateStr) {
     if (Array.isArray(transactions) && transactions.length > 0) {
       hasTransactions.value = true
 
-      const selectedTransactions = transactions.filter(t => t.tanggal === dateStr)
+      const selectedTransactions = transactions.filter(t => {
+        if (!t.tanggal) return false
+        const tClean = String(t.tanggal).trim().substring(0, 10)
+        return tClean === dateStr
+      })
       
       let pemasukanHariIni = 0
       let modalHariIni = 0
@@ -56,19 +60,29 @@ function loadDashboardData(dateStr) {
         pemasukanHariIni += Number(t.total) || 0
 
         if (t.items && Array.isArray(t.items)) {
-          t.items.forEach(item => {
-            const product = products.find(p => p.id === item.produkId || (p.name === item.nama && p.variant === item.varian))
-            if (product) {
-              const modalSatuan = Number(product.costing?.totalCost || product.modal || product.cost || 0)
-              modalHariIni += modalSatuan * (Number(item.jumlah || item.qty) || 0)
-            }
+          t.items.forEach(trxItem => {
+            const trxName = (trxItem.nama || trxItem.name || '').trim().toLowerCase()
+            const trxVar = (trxItem.varian || trxItem.variant || 'original').trim().toLowerCase()
+            const qty = Number(trxItem.jumlah || trxItem.qty || 0)
+
+            const product = products.find(p => {
+              const pName = (p.name || p.nama || '').trim().toLowerCase()
+              const pVar = (p.variant || p.varian || 'original').trim().toLowerCase()
+              return (p.id && p.id === (trxItem.produkId || trxItem.id)) || (pName === trxName && pVar === trxVar)
+            })
+
+            const satuanModal = product 
+              ? Number((product.costing && product.costing.totalCost) ? product.costing.totalCost : (product.modal ? product.modal : (product.cost ? product.cost : 0)))
+              : (Number(trxItem.harga || trxItem.price || 0) > 0 ? Number(trxItem.harga || trxItem.price || 0) * 0.5 : 0)
+
+            modalHariIni += satuanModal * qty
           })
         }
       })
 
       totalPemasukan.value = pemasukanHariIni
-      totalModal.value = modalHariIni
-      totalKeuntungan.value = pemasukanHariIni - modalHariIni
+      totalModal.value = Math.round(modalHariIni)
+      totalKeuntungan.value = pemasukanHariIni - Math.round(modalHariIni)
 
       calculateChart(dateStr, transactions)
     } else {
@@ -82,7 +96,7 @@ function loadDashboardData(dateStr) {
   }
 }
 
-// ===== Hitung Grafik Statistik =====
+// ===== Hitung Grafik Statistik Penjualan =====
 function calculateChart(dateStr, transactions) {
   const [y, m, d] = dateStr.split('-').map(Number)
   const namaHari = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
@@ -94,7 +108,9 @@ function calculateChart(dateStr, transactions) {
   })
 
   transactions.forEach(t => {
-    const target = hari.find(h => h.key === t.tanggal)
+    if (!t.tanggal) return
+    const tClean = String(t.tanggal).trim().substring(0, 10)
+    const target = hari.find(h => h.key === tClean)
     if (target) target.total += Number(t.total) || 0
   })
 
@@ -123,7 +139,7 @@ const onDateChange = (event) => {
 <template>
   <div class="dashboard-container">
     
-    <!-- Kotak Tanggal -->
+    <!-- Kotak Tanggal (Border Normal) -->
     <section class="date-card">
       <div class="date-content">
         <span class="date-title">Tanggal:</span>
@@ -143,8 +159,8 @@ const onDateChange = (event) => {
       </div>
     </section>
 
-    <!-- Grafik Statistik Penjualan -->
-    <section class="card stats-section">
+    <!-- Grafik Statistik Penjualan (Hanya ini yang Border Biru) -->
+    <section class="card stats-section card-blue-border">
       <div class="stats-header">
         <h3>Statistik Penjualan (7 Hari Terakhir)</h3>
       </div>
@@ -178,7 +194,7 @@ const onDateChange = (event) => {
       </div>
     </section>
 
-    <!-- Informasi Keuangan -->
+    <!-- Informasi Keuangan (Border Normal) -->
     <section class="financial-grid">
       <div class="card info-card">
         <div class="card-header-flex">
@@ -194,8 +210,8 @@ const onDateChange = (event) => {
           <span class="card-title">Pengeluaran Hari Ini</span>
           <img src="/images/icons8-bill-50.png" alt="Pengeluaran" class="card-icon" />
         </div>
-        <h4 class="card-value">Rp 0</h4>
-        <span class="card-trend">Belum ada pengeluaran</span>
+        <h4 class="card-value">Rp {{ totalModal.toLocaleString('id-ID') }}</h4>
+        <span class="card-trend">Biaya modal produk</span>
       </div>
 
       <div class="card info-card">
@@ -233,7 +249,7 @@ input:focus, button:focus, *:focus {
 .dashboard-container {
   padding: 16px 20px 100px;
   font-family: Arial, sans-serif;
-  background-color: #ffffff; /* Background disamakan putih bersih */
+  background-color: #ffffff;
   max-width: 600px;
   margin: 0 auto;
   min-height: 100vh;
@@ -243,7 +259,7 @@ input:focus, button:focus, *:focus {
 
 .date-card {
   background: #ffffff;
-  border: 2px solid #e0e3eb;
+  border: 2px solid #e0e3eb; /* Border normal */
   border-radius: 14px;
   padding: 14px 18px;
   margin-bottom: 16px;
@@ -309,11 +325,17 @@ input:focus, button:focus, *:focus {
 
 .card {
   background: #ffffff;
-  border: 2px solid #e0e3eb;
+  border: 2px solid #e0e3eb; /* Border normal untuk kartu keuangan */
   border-radius: 16px;
   padding: 16px;
   margin-bottom: 16px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+/* Border Biru Khusus untuk Statistik Penjualan */
+.card-blue-border {
+  border: 2px solid #7477ee !important;
+  box-shadow: 0 2px 6px rgba(116, 119, 238, 0.1) !important;
 }
 
 .stats-header h3 {

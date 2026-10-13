@@ -6,8 +6,16 @@ const productList = ref([])
 const transactionList = ref([])
 const aktifTab = ref('statistik') // 'statistik' atau 'terlaris'
 
+// Helper tanggal lokal (YYYY-MM-DD), bukan UTC supaya tidak mundur sehari dini hari
+function tanggalLokal(date = new Date()) {
+  const pad = n => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+const hariIni = tanggalLokal()
+
 // State Tanggal Filter (Default hari ini)
-const tanggalFilter = ref(new Date().toISOString().slice(0, 10))
+const tanggalFilter = ref(hariIni)
 
 // Helper Tanggal Hari Ini
 function formatTanggalHariIni() {
@@ -24,7 +32,9 @@ const tanggalHariIniStr = formatTanggalHariIni()
 
 function formatTanggal(iso) {
   if (!iso) return ''
-  const [y, m, d] = iso.split('-').map(Number)
+  const parts = iso.split('-').map(Number)
+  if (parts.length < 3) return iso
+  const [y, m, d] = parts
   return new Date(y, m - 1, d).toLocaleDateString('id-ID', {
     day: 'numeric',
     month: 'long',
@@ -32,12 +42,16 @@ function formatTanggal(iso) {
   })
 }
 
-// Format Tanggal untuk Teks Filter
+// Bulan yang dipilih (YYYY-MM) dari tanggal filter
+const bulanFilter = computed(() => (tanggalFilter.value || hariIni).slice(0, 7))
+const isBulanIni = computed(() => bulanFilter.value === hariIni.slice(0, 7))
+
+// Format Tanggal 
 const formatFilterTeks = computed(() => {
-  if (!tanggalFilter.value) return 'Pilih Tanggal'
-  const [y, m, d] = tanggalFilter.value.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString('id-ID', {
-    day: 'numeric',
+  const parts = bulanFilter.value.split('-').map(Number)
+  if (parts.length < 2 || !parts[0] || !parts[1]) return 'Pilih Tanggal'
+  const [y, m] = parts
+  return new Date(y, m - 1, 1).toLocaleDateString('id-ID', {
     month: 'long',
     year: 'numeric'
   })
@@ -69,14 +83,50 @@ onMounted(() => {
   }
 })
 
+// Transaksi valid = tidak bertanggal di masa depan
+const transaksiValid = computed(() =>
+  transactionList.value.filter(t => t.tanggal && String(t.tanggal).trim().substring(0, 10) <= hariIni)
+)
+
+// Transaksi pada bulan yang dipilih
+const transaksiBulan = computed(() =>
+  transaksiValid.value.filter(t => String(t.tanggal).trim().substring(0, 7) === bulanFilter.value)
+)
+
+// Riwayat bulan ini, terbaru di atas (tanggal, lalu id)
+const transaksiBulanUrut = computed(() =>
+  [...transaksiBulan.value].sort((a, b) =>
+    String(b.tanggal).localeCompare(String(a.tanggal)) || (b.id || 0) - (a.id || 0)
+  )
+)
+
+// HPP per pcs: snapshot di item -> data produk -> 0 (sama dengan hitungan di Beranda)
+function hppSatuan(item) {
+  const snapshot = Number(item.hpp ?? item.hppPerPcs ?? 0)
+  if (snapshot > 0) return snapshot
+
+  const trxName = (item.nama || item.name || '').trim().toLowerCase()
+  const trxVar = (item.varian || item.variant || 'original').trim().toLowerCase()
+
+  const prod = productList.value.find(p => {
+    const pName = (p.name || p.nama || '').trim().toLowerCase()
+    const pVar = (p.variant || p.varian || 'original').trim().toLowerCase()
+    const itemId = item.produkId ?? item.productId
+    return (itemId != null && p.id === itemId) || (pName === trxName && pVar === trxVar)
+  })
+  if (!prod) return 0
+
+  return Number(prod.costing?.totalCost ?? prod.modal ?? prod.cost ?? 0) || 0
+}
+
 // Perhitungan Statistik Bulan Ini
 const totalPenjualanBulanIni = computed(() => {
-  return transactionList.value.reduce((sum, t) => sum + (t.total || 0), 0)
+  return transaksiBulan.value.reduce((sum, t) => sum + (Number(t.total) || 0), 0)
 })
 
 const totalProdukTerjual = computed(() => {
   let count = 0
-  transactionList.value.forEach(t => {
+  transaksiBulan.value.forEach(t => {
     if (t.items && Array.isArray(t.items)) {
       t.items.forEach(item => {
         count += Number(item.jumlah || item.qty || 0)
@@ -89,18 +139,15 @@ const totalProdukTerjual = computed(() => {
 // Total Pengeluaran / Modal dari produk yang terjual
 const totalPengeluaranBulanIni = computed(() => {
   let totalModal = 0
-  transactionList.value.forEach(t => {
+  transaksiBulan.value.forEach(t => {
     if (t.items && Array.isArray(t.items)) {
       t.items.forEach(trxItem => {
-        const prod = productList.value.find(p => p.id === trxItem.produkId || (p.name === trxItem.nama && p.variant === trxItem.varian))
-        if (prod) {
-          const modalSatuan = Number(prod.costing?.totalCost || prod.modal || prod.cost || 0)
-          totalModal += modalSatuan * Number(trxItem.jumlah || trxItem.qty || 0)
-        }
+        const qty = Number(trxItem.jumlah || trxItem.qty || 0)
+        totalModal += hppSatuan(trxItem) * qty
       })
     }
   })
-  return totalModal
+  return Math.round(totalModal)
 })
 
 const totalKeuntunganBulanIni = computed(() => {
@@ -111,19 +158,21 @@ const totalKeuntunganBulanIni = computed(() => {
 const produkTerlarisList = computed(() => {
   const penjualanMap = {}
 
-  transactionList.value.forEach(t => {
+  transaksiValid.value.forEach(t => {
     if (t.items && Array.isArray(t.items)) {
       t.items.forEach(item => {
-        const cleanName = (item.nama || '').trim().toLowerCase()
-        const cleanVar = (item.varian || 'Original').trim().toLowerCase()
+        const cleanName = (item.nama || item.name || '').trim().toLowerCase()
+        const cleanVar = (item.varian || item.variant || 'Original').trim().toLowerCase()
         const key = `${cleanName}-${cleanVar}`
 
         if (!penjualanMap[key]) {
+          // Gambar diambil dari data produk (item transaksi tidak menyimpan gambar)
+          const prod = productList.value.find(p => p.id === (item.produkId ?? item.productId))
           penjualanMap[key] = {
-            nama: item.nama,
-            varian: item.varian || 'Original',
+            nama: item.nama || item.name,
+            varian: item.varian || item.variant || 'Original',
             totalTerjual: 0,
-            image: item.image || '/images/icons8-new-product-50.png'
+            image: prod?.image || item.image || '/images/icons8-new-product-50.png'
           }
         }
         penjualanMap[key].totalTerjual += Number(item.jumlah || item.qty || 0)
@@ -164,7 +213,7 @@ const produkTerlarisList = computed(() => {
     <!-- Statistik Bulanan -->
     <div v-if="aktifTab === 'statistik'">
       
-      <!-- Filter Tanggal menggunakan ikon bulan baru -->
+      <!-- Filter Tanggal -->
       <div class="filter-card-display">
         <span class="filter-text">{{ formatFilterTeks }}</span>
         <div class="filter-right-wrapper">
@@ -182,11 +231,11 @@ const produkTerlarisList = computed(() => {
       <!-- Banner Utama Pendapatan -->
       <div class="main-revenue-banner-white">
         <div class="banner-top">
-          <span class="banner-title">Total Pendapatan Bulan Ini</span>
+          <span class="banner-title">{{ isBulanIni ? 'Total Pendapatan Bulan Ini' : 'Total Pendapatan ' + formatFilterTeks }}</span>
         </div>
         <h1 class="banner-amount-dark">{{ rupiah(totalPenjualanBulanIni) }}</h1>
         <div class="banner-date-text">
-          <span>{{ tanggalHariIniStr }}</span>
+          <span>{{ isBulanIni ? tanggalHariIniStr : formatFilterTeks }}</span>
         </div>
       </div>
 
@@ -235,13 +284,13 @@ const produkTerlarisList = computed(() => {
 
       <!-- Rincian Transaksi Terbaru -->
       <div class="section-container mt-16">
-        <h3 class="section-title">Riwayat Transaksi Bulan Ini</h3>
-        <p v-if="transactionList.length === 0" class="empty-info">Belum ada transaksi tercatat pada bulan ini.</p>
+        <h3 class="section-title">{{ isBulanIni ? 'Riwayat Transaksi Bulan Ini' : 'Riwayat Transaksi ' + formatFilterTeks }}</h3>
+        <p v-if="transaksiBulanUrut.length === 0" class="empty-info">Belum ada transaksi tercatat pada bulan ini.</p>
         
-        <div v-for="trx in transactionList" :key="trx.id" class="trx-history-item">
+        <div v-for="trx in transaksiBulanUrut" :key="trx.id" class="trx-history-item">
           <div class="trx-info">
             <span class="trx-date">{{ formatTanggal(trx.tanggal) }}</span>
-            <span class="trx-items-count">{{ trx.items?.length || 0 }} jenis produk dibeli</span>
+            <span class="trx-items-count">{{ trx.items ? trx.items.length : 0 }} jenis produk dibeli</span>
           </div>
           <div class="trx-total-price">
             <strong>{{ rupiah(trx.total) }}</strong>
