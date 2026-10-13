@@ -6,12 +6,63 @@ const selectedDate = ref('')
 const totalPemasukan = ref(0)
 const totalKeuntungan = ref(0)
 const totalModal = ref(0)
+const totalPengeluaran = ref(0)
 const hasTransactions = ref(false)
 
-// ===== Helper tanggal lokal =====
+// Form catat pengeluaran
+const showExpenseForm = ref(false)
+const expenseNote = ref('')
+const expenseAmount = ref('')
+
+// ===== Tanggal lokal =====
 function tanggalLokal(date = new Date()) {
   const pad = n => String(n).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+// ===== Baca localStorage array =====
+function bacaList(key) {
+  try {
+    const raw = localStorage.getItem(key)
+    const data = raw ? JSON.parse(raw) : []
+    return Array.isArray(data) ? data : []
+  } catch {
+    return []
+  }
+}
+
+// ===== Ambil qty item transaksi =====
+function ambilQty(item) {
+  return Number(item.jumlah ?? item.qty ?? item.quantity ?? item.pcs ?? 0) || 0
+}
+
+// ===== Perhitungan HPP per pcs dari item transaksi =====
+function hppSatuan(item, products, adaItems) {
+
+  // 1. HPP disimpan saat transaksi dicatat
+  const snapshot = Number(item.hpp ?? item.hppPerPcs ?? item.modal ?? item.cost ?? 0)
+  if (snapshot > 0) return snapshot
+
+  // Produk berdasarkan ID atau kecocokan nama & varian
+  const itemId = item.produkId ?? item.productId ?? (adaItems ? item.id : null)
+  const trxName = (item.nama || item.name || '').trim().toLowerCase()
+  const trxVar = (item.varian || item.variant || 'original').trim().toLowerCase()
+
+  const product = products.find(p => {
+    const pName = (p.name || p.nama || '').trim().toLowerCase()
+    const pVar = (p.variant || p.varian || 'original').trim().toLowerCase()
+    return (itemId != null && p.id === itemId) || (pName === trxName && pVar === trxVar)
+  })
+  if (!product) return 0
+
+  // HPP per PCS
+  return Number(
+    product.costing?.hppPerPcs ??
+    product.costing?.totalCost ??
+    product.modal ??
+    product.cost ??
+    0
+  ) || 0
 }
 
 // State data grafik 7 hari terakhir
@@ -38,15 +89,22 @@ onMounted(() => {
 // ===== Fungsi Load & Hitung Keuangan =====
 function loadDashboardData(dateStr) {
   try {
-    const savedTransactions = localStorage.getItem('transactionsList')
-    const transactions = savedTransactions ? JSON.parse(savedTransactions) : []
+    const transactions = bacaList('transactionsList')
+    const products = bacaList('productsList')
+    const expenses = bacaList('expensesList')
 
-    const savedProducts = localStorage.getItem('productsList')
-    const products = savedProducts ? JSON.parse(savedProducts) : []
+    console.log('Dashboard - Selected Date:', dateStr)
+    console.log('Dashboard - Transactions:', transactions)
 
-    if (Array.isArray(transactions) && transactions.length > 0) {
+    // Pengeluaran pada tanggal terpilih
+    totalPengeluaran.value = expenses
+      .filter(e => e.tanggal && String(e.tanggal).trim().substring(0, 10) === dateStr)
+      .reduce((acc, e) => acc + (Number(e.nominal) || 0), 0)
+
+    if (transactions.length > 0) {
       hasTransactions.value = true
 
+      // Filter transaksi berdasarkan tanggal
       const selectedTransactions = transactions.filter(t => {
         if (!t.tanggal) return false
         const tClean = String(t.tanggal).trim().substring(0, 10)
@@ -59,29 +117,20 @@ function loadDashboardData(dateStr) {
       selectedTransactions.forEach(t => {
         pemasukanHariIni += Number(t.total) || 0
 
-        if (t.items && Array.isArray(t.items)) {
-          t.items.forEach(trxItem => {
-            const trxName = (trxItem.nama || trxItem.name || '').trim().toLowerCase()
-            const trxVar = (trxItem.varian || trxItem.variant || 'original').trim().toLowerCase()
-            const qty = Number(trxItem.jumlah || trxItem.qty || 0)
+        // Format transaksi: array items
+        const adaItems = Array.isArray(t.items) && t.items.length > 0
+        const items = adaItems ? t.items : [t]
 
-            const product = products.find(p => {
-              const pName = (p.name || p.nama || '').trim().toLowerCase()
-              const pVar = (p.variant || p.varian || 'original').trim().toLowerCase()
-              return (p.id && p.id === (trxItem.produkId || trxItem.id)) || (pName === trxName && pVar === trxVar)
-            })
-
-            const satuanModal = product 
-              ? Number((product.costing && product.costing.totalCost) ? product.costing.totalCost : (product.modal ? product.modal : (product.cost ? product.cost : 0)))
-              : (Number(trxItem.harga || trxItem.price || 0) > 0 ? Number(trxItem.harga || trxItem.price || 0) * 0.5 : 0)
-
-            modalHariIni += satuanModal * qty
-          })
-        }
+        items.forEach(trxItem => {
+          const qty = ambilQty(trxItem)
+          modalHariIni += hppSatuan(trxItem, products, adaItems) * qty
+        })
       })
 
       totalPemasukan.value = pemasukanHariIni
       totalModal.value = Math.round(modalHariIni)
+
+      // Perhitungan Keuntungan bersih 
       totalKeuntungan.value = pemasukanHariIni - Math.round(modalHariIni)
 
       calculateChart(dateStr, transactions)
@@ -96,15 +145,15 @@ function loadDashboardData(dateStr) {
   }
 }
 
-// ===== Hitung Grafik Statistik Penjualan =====
+// ===== Hitung Grafik Statistik (7 hari terakhir, berakhir di tanggal terpilih) =====
 function calculateChart(dateStr, transactions) {
   const [y, m, d] = dateStr.split('-').map(Number)
-  const namaHari = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
-  const selisihKeSenin = (new Date(y, m - 1, d).getDay() + 6) % 7
+  const namaHari = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
 
-  const hari = namaHari.map((nama, i) => {
-    const dt = new Date(y, m - 1, d - selisihKeSenin + i)
-    return { key: tanggalLokal(dt), day: nama, total: 0 }
+  // i = 0 -> 6 hari sebelum tanggal terpilih, i = 6 -> tanggal terpilih
+  const hari = Array.from({ length: 7 }, (_, i) => {
+    const dt = new Date(y, m - 1, d - 6 + i)
+    return { key: tanggalLokal(dt), day: namaHari[dt.getDay()], total: 0 }
   })
 
   transactions.forEach(t => {
@@ -134,12 +183,35 @@ const onDateChange = (event) => {
 
   loadDashboardData(chosenStr)
 }
+
+// ===== Simpan pengeluaran (biaya operasional) =====
+const simpanPengeluaran = () => {
+  const nominal = Number(String(expenseAmount.value).replace(/\D/g, ''))
+  if (!expenseNote.value.trim() || nominal <= 0) {
+    alert('Isi keterangan dan nominal pengeluaran dengan benar!')
+    return
+  }
+
+  const expenses = bacaList('expensesList')
+  expenses.push({
+    id: Date.now(),
+    tanggal: selectedDate.value,
+    keterangan: expenseNote.value.trim(),
+    nominal
+  })
+  localStorage.setItem('expensesList', JSON.stringify(expenses))
+
+  expenseNote.value = ''
+  expenseAmount.value = ''
+  showExpenseForm.value = false
+  loadDashboardData(selectedDate.value)
+}
 </script>
 
 <template>
   <div class="dashboard-container">
     
-    <!-- Kotak Tanggal (Border Normal) -->
+    <!-- Kotak Tanggal -->
     <section class="date-card">
       <div class="date-content">
         <span class="date-title">Tanggal:</span>
@@ -159,8 +231,8 @@ const onDateChange = (event) => {
       </div>
     </section>
 
-    <!-- Grafik Statistik Penjualan (Hanya ini yang Border Biru) -->
-    <section class="card stats-section card-blue-border">
+    <!-- Grafik Statistik Penjualan -->
+    <section class="card stats-section">
       <div class="stats-header">
         <h3>Statistik Penjualan (7 Hari Terakhir)</h3>
       </div>
@@ -194,7 +266,7 @@ const onDateChange = (event) => {
       </div>
     </section>
 
-    <!-- Informasi Keuangan (Border Normal) -->
+    <!-- Informasi Keuangan -->
     <section class="financial-grid">
       <div class="card info-card">
         <div class="card-header-flex">
@@ -210,8 +282,8 @@ const onDateChange = (event) => {
           <span class="card-title">Pengeluaran Hari Ini</span>
           <img src="/images/icons8-bill-50.png" alt="Pengeluaran" class="card-icon" />
         </div>
-        <h4 class="card-value">Rp {{ totalModal.toLocaleString('id-ID') }}</h4>
-        <span class="card-trend">Biaya modal produk</span>
+        <h4 class="card-value">Rp {{ totalPengeluaran.toLocaleString('id-ID') }}</h4>
+        <span class="card-trend">{{ totalPengeluaran > 0 ? 'Biaya operasional' : 'Belum ada pengeluaran' }}</span>
       </div>
 
       <div class="card info-card">
@@ -230,6 +302,33 @@ const onDateChange = (event) => {
         </div>
         <h4 class="card-value">Rp {{ totalModal.toLocaleString('id-ID') }}</h4>
         <span class="card-trend">Dari produk</span>
+      </div>
+    </section>
+
+    <!-- Catat Pengeluaran -->
+    <section class="expense-section">
+      <button v-if="!showExpenseForm" @click="showExpenseForm = true" class="expense-toggle-btn">
+        + Catat Pengeluaran
+      </button>
+
+      <div v-else class="card expense-form">
+        <input
+          v-model="expenseNote"
+          type="text"
+          placeholder="Keterangan (contoh: Beli kemasan)"
+          class="expense-input"
+        />
+        <input
+          v-model="expenseAmount"
+          type="text"
+          inputmode="numeric"
+          placeholder="Nominal (contoh: 25000)"
+          class="expense-input"
+        />
+        <div class="expense-actions">
+          <button @click="showExpenseForm = false" class="expense-cancel-btn">Batal</button>
+          <button @click="simpanPengeluaran" class="expense-save-btn">Simpan</button>
+        </div>
       </div>
     </section>
 
@@ -259,7 +358,7 @@ input:focus, button:focus, *:focus {
 
 .date-card {
   background: #ffffff;
-  border: 2px solid #e0e3eb; /* Border normal */
+  border: 2px solid #e0e3eb;
   border-radius: 14px;
   padding: 14px 18px;
   margin-bottom: 16px;
@@ -325,17 +424,11 @@ input:focus, button:focus, *:focus {
 
 .card {
   background: #ffffff;
-  border: 2px solid #e0e3eb; /* Border normal untuk kartu keuangan */
+  border: 2px solid #e0e3eb;
   border-radius: 16px;
   padding: 16px;
   margin-bottom: 16px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-}
-
-/* Border Biru Khusus untuk Statistik Penjualan */
-.card-blue-border {
-  border: 2px solid #7477ee !important;
-  box-shadow: 0 2px 6px rgba(116, 119, 238, 0.1) !important;
 }
 
 .stats-header h3 {
@@ -436,7 +529,6 @@ input:focus, button:focus, *:focus {
   margin: 0 0 6px 0;
   font-size: 16px;
   font-weight: 800;
-  color: #1e272e;
 }
 
 .card-trend {
@@ -447,5 +539,64 @@ input:focus, button:focus, *:focus {
 .card-trend.up {
   color: #2ed573;
   font-weight: bold;
+}
+
+/* ===== Catat Pengeluaran ===== */
+.expense-section {
+  margin-top: 16px;
+}
+
+.expense-toggle-btn {
+  width: 100%;
+  padding: 12px;
+  background: #ffffff;
+  border: 2px dashed #c8cbd6;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: bold;
+  color: #5352ed;
+  cursor: pointer;
+}
+
+.expense-form {
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.expense-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  border: 1px solid #dcdde1;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.expense-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.expense-cancel-btn,
+.expense-save-btn {
+  flex: 1;
+  padding: 11px;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.expense-cancel-btn {
+  background: #f1f2f6;
+  color: #2f3640;
+}
+
+.expense-save-btn {
+  background: #5352ed;
+  color: #ffffff;
 }
 </style>
