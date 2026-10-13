@@ -471,10 +471,20 @@ function tutupForm(tab) {
 </template>
 
 <style scoped>
+/* Hilangkan efek highlight biru di HP dan outline fokus browser */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input:focus, select:focus, button:focus, *:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 .transaksi-container {
   padding: 16px 20px 100px;
   min-height: 100vh;
-  background: #f8f6f2;
+  background: #ffffff;
   max-width: 600px;
   margin: 0 auto;
   color: #111;
@@ -484,39 +494,47 @@ function tutupForm(tab) {
 h1 {
   font-size: 20px;
   margin: 0 0 4px;
+  color: #1e272e;
 }
 
 h2 {
   margin: 0 0 8px;
+  color: #1e272e;
 }
 
 .subtitle {
-  color: #444;
+  color: #57606f;
   margin: 0 0 16px;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .tabs {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 16px;
+  background: white;
+  border: 2px solid #e0e3eb;
+  padding: 6px;
+  border-radius: 14px;
 }
 
 .tabs button {
   flex: 1;
-  padding: 12px 8px;
-  border: 2px solid #d9dce5;
+  padding: 12px 16px;
+  border: none;
   border-radius: 10px;
-  background: white;
-  color: #31517d;
+  background: transparent;
+  color: #696d74;
   font-weight: bold;
+  font-size: 14px;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .tabs button.active {
-  background: #7878ec;
+  background: #5352ed;
   color: white;
-  border-color: #7777ed;
+  box-shadow: 0 2px 6px rgba(83, 82, 237, 0.3);
 }
 
 .summary-card,
@@ -529,11 +547,13 @@ h2 {
   border-radius: 16px;
   padding: 16px 18px;
   margin-bottom: 14px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
 }
 
 .summary-card h3 {
   margin: 0 0 6px;
-  font-size: 16px;
+  font-size: 15px;
+  color: #1e272e;
 }
 
 .summary-title {
@@ -545,14 +565,14 @@ h2 {
 .summary-icon {
   width: 20px;
   height: 20px;
-  color: #7878ec;
+  color: #5352ed;
   flex-shrink: 0;
 }
 
 .summary-card p {
   margin: 0 0 12px;
-  font-size: 14px;
-  color: #444;
+  font-size: 13px;
+  color: #57606f;
 }
 
 .summary-info {
@@ -562,22 +582,25 @@ h2 {
 }
 
 .summary-info small {
-  color: #666;
+  color: #696d74;
+  font-size: 12px;
 }
 
 .summary-info h2 {
-  font-size: 20px;
+  font-size: 18px;
   margin: 4px 0 0;
+  color: #1e272e;
 }
 
 .section-title {
   margin: 16px 0 10px;
-  font-size: 16px;
+  font-size: 15px;
+  color: #1e272e;
 }
 
 .empty-info {
-  color: #696d74;
-  font-size: 14px;
+  color: #718093;
+  font-size: 13px;
   margin: 8px 0 16px;
 }
 
@@ -592,10 +615,10 @@ h2 {
 }
 
 .product-placeholder {
-  background: #fff0e8;
-  width: 60px;
-  height: 60px;
-  border-radius: 12px;
+  background: #f1f2f6;
+  width: 50px;
+  height: 50px;
+  border-radius: 10px;
   flex-shrink: 0;
   overflow: hidden;
   display: flex;
@@ -613,20 +636,27 @@ h2 {
   flex: 1;
 }
 
+.product-detail strong {
+  font-size: 14px;
+  color: #1e272e;
+}
+
 .product-detail p {
   margin: 3px 0;
-  color: #696d74;
-  font-size: 14px;
+  color: #718093;
+  font-size: 13px;
 }
 
 .price {
-  color: #020202;
+  color: #27ae60 !important;
+  font-size: 13px;
 }
 
 .date-info {
   display: block;
   margin-top: 10px;
-  color: #696d74;
+  color: #718093;
+  font-size: 12px;
 }
 
 .card-actions {
@@ -634,7 +664,7 @@ h2 {
   gap: 10px;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid #f1f2f6;
 }
 
 .card-actions button {
@@ -645,7 +675,7 @@ h2 {
   gap: 6px;
   padding: 9px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: bold;
   cursor: pointer;
 }
@@ -656,20 +686,20 @@ h2 {
 }
 
 .btn-edit {
-  background: #f1efff;
-  border: 1px solid #cfccf7;
-  color: #5a57d6;
+  background: #e8f4f8;
+  border: 1px solid #70a1ff;
+  color: #5352ed;
 }
 
 .btn-hapus {
   background: #fff5f5;
-  border: 1px solid #f0c4c4;
-  color: #d94b4b;
+  border: 1px solid #ff4757;
+  color: #ff4757;
 }
 
 .primary-button {
   width: 100%;
-  background: linear-gradient(100deg, #7477ee, #9b7bea);
+  background-color: #2ed573;
   border: none;
   color: white;
   padding: 15px;
@@ -683,16 +713,19 @@ h2 {
 .back-button {
   border: none;
   background: none;
-  color: #090a0a;
-  font-size: 16px;
+  color: #1e272e;
+  font-size: 14px;
+  font-weight: bold;
   padding: 0;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   cursor: pointer;
 }
 
 label {
   display: block;
   font-weight: bold;
+  font-size: 12px;
+  color: #1e272e;
   margin: 14px 0 6px;
 }
 
@@ -700,42 +733,49 @@ input,
 select {
   width: 100%;
   box-sizing: border-box;
-  padding: 14px;
-  border: 2px solid #d9dce5;
+  padding: 12px 14px;
+  border: 1px solid #dcdde1;
   border-radius: 10px;
   background: white;
-  color: #48494b;
-  font-size: 14px;
+  color: #1e272e;
+  font-size: 13px;
 }
 
 .quantity-control {
-  default: flex;
+  display: flex;
   align-items: center;
-  gap: 20px;
-  border: 2px solid #d9dce5;
+  gap: 12px;
+  border: 1px solid #dcdde1;
   border-radius: 10px;
-  padding: 10px;
+  padding: 8px 12px;
+  background: white;
 }
 
 .quantity-control button {
-  width: 35px;
-  height: 35px;
-  border: 2px solid #d9dce5;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #dcdde1;
   border-radius: 50%;
   background: white;
-  font-size: 20px;
-  color: #48494b;
+  font-size: 18px;
+  font-weight: bold;
+  color: #1e272e;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .quantity-control .qty-input {
-  width: 80px;
-  padding: 8px;
-  border-radius: 8px;
+  width: 60px;
+  padding: 6px;
+  border: none;
+  border-radius: 6px;
   text-align: center;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: bold;
-  color: #111;
+  color: #1e272e;
+  background: #f1f2f6;
   -moz-appearance: textfield;
   appearance: textfield;
 }
@@ -747,12 +787,14 @@ select {
 }
 
 .quantity-control span {
-  color: #696d74;
+  color: #718093;
+  font-size: 13px;
+  font-weight: bold;
 }
 
 .price-card {
   margin-top: 16px;
-  background: #f9faff;
+  background: #ffffff;
 }
 
 .price-card p,
@@ -760,6 +802,13 @@ select {
   display: flex;
   justify-content: space-between;
   gap: 15px;
+  font-size: 13px;
+  color: #57606f;
+}
+
+.price-card p strong,
+.total-card strong {
+  color: #1e272e;
 }
 
 .price-card p {
@@ -768,6 +817,8 @@ select {
 
 .cart-card h3 {
   margin: 0 0 8px;
+  font-size: 14px;
+  color: #1e272e;
 }
 
 .cart-item {
@@ -775,7 +826,8 @@ select {
   justify-content: space-between;
   align-items: center;
   padding: 10px 0;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #f1f2f6;
+  font-size: 13px;
 }
 
 .cart-item div {
@@ -784,17 +836,29 @@ select {
   gap: 2px;
 }
 
+.cart-item span {
+  color: #1e272e;
+  font-weight: 500;
+}
+
+.cart-item strong {
+  color: #27ae60;
+}
+
 .delete-btn {
-  background: #ff4d4d;
+  background: #ff4757;
   color: white;
   border: none;
-  padding: 8px 14px;
-  border-radius: 10px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: bold;
   cursor: pointer;
 }
 
 .total-card {
   margin-top: 14px;
-  font-size: 17px;
+  font-size: 15px;
+  background: #ffffff;
 }
 </style>

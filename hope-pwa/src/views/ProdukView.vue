@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
 const productList = ref([])
 const showForm = ref(false)
@@ -133,19 +133,35 @@ const deleteIngredient = (id) => {
 const handleImageUpload = (event) => {
   const file = event.target.files[0]
   if (file) {
-    form.value.image = URL.createObjectURL(file)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Ukuran file maksimal 2MB!')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      form.value.image = e.target.result
+    }
+    reader.readAsDataURL(file)
   }
 }
 
 const triggerUpdateImage = (productId, event) => {
   const file = event.target.files[0]
   if (file) {
-    const newImageUrl = URL.createObjectURL(file)
-    const product = productList.value.find(p => p.id === productId)
-    if (product) {
-      product.image = newImageUrl
-      localStorage.setItem('productsList', JSON.stringify(productList.value))
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Ukuran file maksimal 2MB!')
+      return
     }
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const newImageUrl = e.target.result
+      const product = productList.value.find(p => p.id === productId)
+      if (product) {
+        product.image = newImageUrl
+        localStorage.setItem('productsList', JSON.stringify(productList.value))
+      }
+    }
+    reader.readAsDataURL(file)
   }
 }
 
@@ -200,7 +216,7 @@ const filteredProducts = computed(() => {
   if (!selectedCategoryFilter.value) {
     return productList.value
   }
-  return productList.value.filter(p => p.category.toLowerCase() === selectedCategoryFilter.value.toLowerCase())
+  return productList.value.filter(p => (p.category || '').toLowerCase() === selectedCategoryFilter.value.toLowerCase())
 })
 
 const toggleForm = () => {
@@ -217,10 +233,24 @@ const saveProduct = () => {
     return
   }
 
+  const cleanName = form.value.name.trim().toLowerCase()
+  const cleanVariant = (form.value.variant || 'Original').trim().toLowerCase()
+
+  const isDuplicate = productList.value.some(p => {
+    const pName = (p.name || '').trim().toLowerCase()
+    const pVar = (p.variant || 'Original').trim().toLowerCase()
+    return pName === cleanName && pVar === cleanVariant && p.id !== editingProductId.value
+  })
+
+  if (isDuplicate) {
+    alert('Produk dengan Nama dan Varian rasa yang sama sudah terdaftar!')
+    return
+  }
+
   const productData = {
     id: editingProductId.value || Date.now(),
     image: form.value.image || '/images/icons8-new-product-50.png',
-    name: form.value.name,
+    name: form.value.name.trim(),
     category: form.value.category.trim() || 'Umum',
     variant: form.value.variant.trim() || 'Original',
     price: Number(String(form.value.price).replace(/\D/g, '')) || 0,
@@ -266,8 +296,10 @@ const deleteProduct = (id) => {
     alert('Sedang dalam mode edit, harap simpan atau batalkan terlebih dahulu.')
     return
   }
-  productList.value = productList.value.filter(p => p.id !== id)
-  localStorage.setItem('productsList', JSON.stringify(productList.value))
+  if (confirm('Apakah kamu yakin ingin menghapus produk ini?')) {
+    productList.value = productList.value.filter(p => p.id !== id)
+    localStorage.setItem('productsList', JSON.stringify(productList.value))
+  }
 }
 
 const editProduct = (product) => {
@@ -294,39 +326,10 @@ const editProduct = (product) => {
   }
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
-
-watch(() => form.value.price, (newValue) => {
-  if (newValue !== undefined && newValue !== null) {
-    const cleanValue = String(newValue).replace(/\D/g, '')
-    if (cleanValue === '') {
-      form.value.price = ''
-    } else {
-      const formatted = new Intl.NumberFormat('id-ID').format(Number(cleanValue))
-      if (formatted !== newValue) {
-        form.value.price = formatted
-      }
-    }
-  }
-})
-
-watch(() => form.value.cost, (newValue) => {
-  if (costInputMode.value === 'total' && newValue !== undefined && newValue !== null) {
-    const cleanValue = String(newValue).replace(/\D/g, '')
-    if (cleanValue === '') {
-      form.value.cost = ''
-    } else {
-      const formatted = new Intl.NumberFormat('id-ID').format(Number(cleanValue))
-      if (formatted !== newValue) {
-        form.value.cost = formatted
-      }
-    }
-  }
-})
 </script>
 
 <template>
   <div class="page-wrapper">
-    <!-- Header Nav & Tombol Filter -->
     <div class="header-nav">
       <h3 class="page-title">Produk</h3>
       <div class="header-actions">
@@ -361,7 +364,6 @@ watch(() => form.value.cost, (newValue) => {
       </div>
     </div>
 
-    <!-- Filter kategori -->
     <div v-if="selectedCategoryFilter" class="filter-status-bar">
       <span>Menampilkan kategori: <strong>{{ selectedCategoryFilter }}</strong></span>
       <button @click="selectedCategoryFilter = ''" class="reset-filter-btn">Reset</button>
@@ -371,7 +373,6 @@ watch(() => form.value.cost, (newValue) => {
     <div v-if="showForm" class="card form-box">
       <h2 class="form-header-title">{{ editingProductId ? 'Edit Produk' : 'Tambah Produk Baru' }}</h2>
       
-      <!-- Upload Gambar -->
       <div class="upload-box" @click="$refs.fileInput.click()">
         <div v-if="!form.image" class="upload-placeholder">
           <img src="/images/icons8-camera-50.png" alt="Kamera" class="icon-asset-large" />
@@ -391,13 +392,11 @@ watch(() => form.value.cost, (newValue) => {
         />
       </div>
 
-      <!-- Nama Produk -->
       <div class="input-group">
         <label>Nama Produk</label>
         <input v-model="form.name" type="text" placeholder="Contoh: Keripik Pisang" class="input-field" />
       </div>
 
-      <!-- Kategori Produk -->
       <div class="input-group">
         <label>Jenis / Kategori Produk</label>
         <select v-model="form.category" @change="handleCategoryChange" class="input-field">
@@ -412,7 +411,6 @@ watch(() => form.value.cost, (newValue) => {
         </div>
       </div>
 
-      <!-- Varian Rasa -->
       <div class="input-group">
         <label>Varian Rasa</label>
         <select v-model="form.variant" @change="handleVariantChange" class="input-field">
@@ -427,7 +425,6 @@ watch(() => form.value.cost, (newValue) => {
         </div>
       </div>
 
-      <!-- Pilihan Kategori HPP -->
       <div class="card sub-card hpp-section">
         <label class="section-label">Modal / Biaya Produksi</label>
         
@@ -450,13 +447,11 @@ watch(() => form.value.cost, (newValue) => {
           </button>
         </div>
 
-        <!-- Mode Total -->
         <div v-if="costInputMode === 'total'" class="input-group mt-12">
             <label>Jumlah Modal Total</label>
             <input v-model="form.cost" type="text" placeholder="Rp 0" class="input-field no-spinner" />
         </div>
 
-        <!-- Mode Terperinci -->
         <div v-if="costInputMode === 'detail'" class="input-group mt-12 detail-box">
           <label>Daftar Bahan Baku & Kemasan</label>
           
@@ -477,7 +472,6 @@ watch(() => form.value.cost, (newValue) => {
             </div>
           </div>
 
-          <!-- Form Input Bahan -->
           <div class="ingredient-input-container">
             <div class="input-group mb-8">
               <label class="sub-label">Pilih / Nama Bahan</label>
@@ -493,7 +487,6 @@ watch(() => form.value.cost, (newValue) => {
               <button type="button" @click="saveNewIngredient" class="sub-save-btn">Simpan Bahan</button>
             </div>
 
-            <!-- Harga Bahan dan Total Bahan -->
             <div class="row-group mb-8">
               <div class="input-group half">
                 <label class="sub-label">Harga Bahan (Beli)</label>
@@ -510,7 +503,6 @@ watch(() => form.value.cost, (newValue) => {
               </div>
             </div>
 
-            <!-- Pemakaian Sekali Buat -->
             <div class="input-group mb-8">
               <label class="sub-label">Pemakaian (Sekali Buat)</label>
               <div class="inline-flex">
@@ -521,11 +513,9 @@ watch(() => form.value.cost, (newValue) => {
               </div>
             </div>
 
-            <!-- Tombol Tambah ke Daftar Bahan -->
             <button type="button" @click="addIngredientToList" class="save-btn">+ Masukkan ke Daftar Bahan</button>
           </div>
 
-          <!-- Input Hasil Jadi Per Pcs -->
           <div class="batch-output-box mt-12">
             <label>Berapa Total Produk yang Dihasilkan dari Resep Ini?</label>
             <div class="batch-flex">
@@ -540,13 +530,11 @@ watch(() => form.value.cost, (newValue) => {
         </div>
       </div>
 
-      <!-- Harga Jual -->
       <div class="input-group">
         <label>Harga Jual</label>
         <input v-model="form.price" type="text" placeholder="Rp 0" class="input-field no-spinner" />
       </div>
 
-      <!-- Stok & Batas Stok -->
       <div class="row-group">
         <div class="input-group half">
           <label>Stok</label>
@@ -558,7 +546,6 @@ watch(() => form.value.cost, (newValue) => {
         </div>
       </div>
 
-      <!-- Tombol Update Perubahan -->
       <button @click="saveProduct" class="save-btn">
         {{ editingProductId ? 'Update Perubahan' : 'Simpan Produk' }}
       </button>
@@ -596,9 +583,26 @@ watch(() => form.value.cost, (newValue) => {
             <p class="prod-detail">Stok: <strong>{{ product.stock }}</strong> (Min: {{ product.minStock }})</p>
           </div>
         </div>
+
         <div class="card-actions">
-          <button @click="editProduct(product)" class="edit-btn">Edit</button>
-          <button @click="deleteProduct(product.id)" class="delete-btn">Hapus</button>
+          <button class="btn-edit" @click="editProduct(product)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+            </svg>
+            Edit
+          </button>
+          <button class="btn-hapus" @click="deleteProduct(product.id)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+              <path d="M10 11v6" />
+              <path d="M14 11v6" />
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+            </svg>
+            Hapus
+          </button>
         </div>
       </div>
     </div>
@@ -606,6 +610,16 @@ watch(() => form.value.cost, (newValue) => {
 </template>
 
 <style scoped>
+/* Hilangkan efek highlight biru di HP dan outline fokus browser */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input:focus, select:focus, button:focus, *:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 input.no-spinner::-webkit-outer-spin-button,
 input.no-spinner::-webkit-inner-spin-button {
   -webkit-appearance: none;
@@ -903,12 +917,22 @@ input.no-spinner {
 }
 
 .compact-unit {
-  width: 65px !important;
+  width: 70px !important;
   flex-shrink: 0;
-  padding: 10px 4px !important;
-  font-size: 11px !important;
+  padding: 10px 6px !important;
+  font-size: 12px !important;
   text-align: center;
   pointer-events: auto;
+  border: 1px solid #dcdde1;
+  border-radius: 8px;
+  background-color: #fff;
+  color: #1e272e;
+  height: 41px;
+}
+
+.compact-unit:focus {
+  outline: none;
+  border-color: #5352ed;
 }
 
 .ingredient-input-container {
@@ -1037,33 +1061,41 @@ input.no-spinner {
   text-overflow: ellipsis;
 }
 
+/* Styling Button*/
 .card-actions {
   display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.card-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   gap: 6px;
-  flex-shrink: 0;
-  pointer-events: auto;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.delete-btn {
-  background-color: #ff4757;
-  color: white;
-  border: none;
-  padding: 8px 14px;
-  border-radius: 10px;
-  cursor: pointer;
-  flex-shrink: 0;
-  pointer-events: auto;
+.card-actions svg {
+  width: 16px;
+  height: 16px;
 }
 
-.edit-btn {
-  background-color: #2ed573;
-  color: white;
-  border: none;
-  padding: 8px 14px;
-  border-radius: 10px;
-  cursor: pointer;
-  flex-shrink: 0;
-  pointer-events: auto;
+.btn-edit {
+  background: #e8f4f8;
+  border: 1px solid #70a1ff;
+  color: #5352ed;
+}
+
+.btn-hapus {
+  background: #fff5f5;
+  border: 1px solid #ff4757;
+  color: #ff4757;
 }
 
 .mt-12 {
@@ -1211,11 +1243,5 @@ input.no-spinner {
 .highlight-cost {
   color: #27ae60;
   font-size: 13px;
-}
-
-.hint-text {
-  font-size: 10px;
-  color: #718093;
-  margin: 0;
 }
 </style>

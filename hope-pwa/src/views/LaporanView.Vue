@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 
-// ===== State Data =====
+// State Data
 const productList = ref([])
 const transactionList = ref([])
 const aktifTab = ref('statistik') // 'statistik' atau 'terlaris'
@@ -69,7 +69,7 @@ onMounted(() => {
   }
 })
 
-// ===== Perhitungan Statistik Bulan Ini =====
+// Perhitungan Statistik Bulan Ini
 const totalPenjualanBulanIni = computed(() => {
   return transactionList.value.reduce((sum, t) => sum + (t.total || 0), 0)
 })
@@ -92,10 +92,10 @@ const totalPengeluaranBulanIni = computed(() => {
   transactionList.value.forEach(t => {
     if (t.items && Array.isArray(t.items)) {
       t.items.forEach(trxItem => {
-        const prod = productList.value.find(p => p.id === trxItem.produkId)
+        const prod = productList.value.find(p => p.id === trxItem.produkId || (p.name === trxItem.nama && p.variant === trxItem.varian))
         if (prod) {
-          const modalSatuan = Number(prod.modal || prod.cost || (prod.price ? prod.price * 0.6 : 0))
-          totalModal += modalSatuan * Number(trxItem.jumlah || 0)
+          const modalSatuan = Number(prod.costing?.totalCost || prod.modal || prod.cost || 0)
+          totalModal += modalSatuan * Number(trxItem.jumlah || trxItem.qty || 0)
         }
       })
     }
@@ -107,18 +107,21 @@ const totalKeuntunganBulanIni = computed(() => {
   return totalPenjualanBulanIni.value - totalPengeluaranBulanIni.value
 })
 
-// ===== Perhitungan Produk Terlaris =====
+// Perhitungan Produk Terlaris
 const produkTerlarisList = computed(() => {
   const penjualanMap = {}
 
   transactionList.value.forEach(t => {
     if (t.items && Array.isArray(t.items)) {
       t.items.forEach(item => {
-        const key = `${item.nama}-${item.varian}`
+        const cleanName = (item.nama || '').trim().toLowerCase()
+        const cleanVar = (item.varian || 'Original').trim().toLowerCase()
+        const key = `${cleanName}-${cleanVar}`
+
         if (!penjualanMap[key]) {
           penjualanMap[key] = {
             nama: item.nama,
-            varian: item.varian,
+            varian: item.varian || 'Original',
             totalTerjual: 0,
             image: item.image || '/images/icons8-new-product-50.png'
           }
@@ -158,15 +161,15 @@ const produkTerlarisList = computed(() => {
       </button>
     </div>
 
-    <!-- KONTEN TAB 1: STATISTIK BULANAN -->
+    <!-- Statistik Bulanan -->
     <div v-if="aktifTab === 'statistik'">
       
-      <!-- Filter Tanggal (Tanpa Tanda Panah Dropdown) -->
+      <!-- Filter Tanggal menggunakan ikon bulan baru -->
       <div class="filter-card-display">
         <span class="filter-text">{{ formatFilterTeks }}</span>
         <div class="filter-right-wrapper">
           <div class="icon-date-container">
-            <img src="/images/icons8-date-50.png" alt="Tanggal" class="icon-asset-small" />
+            <img src="/images/icons8-plus-1-month-50.png" alt="Bulan" class="icon-asset-small" />
             <input 
               type="date" 
               v-model="tanggalFilter" 
@@ -176,7 +179,7 @@ const produkTerlarisList = computed(() => {
         </div>
       </div>
 
-      <!-- BANNER UTAMA PENDAPATAN (Tanpa Ikon Uang di Kanan) -->
+      <!-- Banner Utama Pendapatan -->
       <div class="main-revenue-banner-white">
         <div class="banner-top">
           <span class="banner-title">Total Pendapatan Bulan Ini</span>
@@ -187,7 +190,7 @@ const produkTerlarisList = computed(() => {
         </div>
       </div>
 
-      <!-- RINGKASAN KARTU KECIL DI BAWAH BANNER -->
+      <!-- Data Penjualan Bulanan -->
       <div class="summary-grid">
         <!-- Total Penjualan -->
         <div class="summary-box">
@@ -230,7 +233,7 @@ const produkTerlarisList = computed(() => {
         </div>
       </div>
 
-      <!-- BAGIAN BAWAH: RINCIAN TRANSAKSI TERBARU -->
+      <!-- Rincian Transaksi Terbaru -->
       <div class="section-container mt-16">
         <h3 class="section-title">Riwayat Transaksi Bulan Ini</h3>
         <p v-if="transactionList.length === 0" class="empty-info">Belum ada transaksi tercatat pada bulan ini.</p>
@@ -247,7 +250,7 @@ const produkTerlarisList = computed(() => {
       </div>
     </div>
 
-    <!-- KONTEN TAB 2: PRODUK TERLARIS -->
+    <!-- Produk Terlaris -->
     <div v-else class="terlaris-section">
       <div class="section-header-row">
         <h3 class="section-title">Produk / Varian Terlaris</h3>
@@ -263,8 +266,9 @@ const produkTerlarisList = computed(() => {
         :key="index" 
         class="card product-rank-card"
       >
-        <div class="rank-number" :class="'rank-' + (index + 1)">
-          {{ index === 0 ? '👑' : index + 1 }}
+        <div class="rank-number" :class="{ 'rank-1-box': index === 0 }">
+          <img v-if="index === 0" src="/images/icons8-best-seller-50.png" alt="Best Seller" class="best-seller-icon" />
+          <span v-else>{{ index + 1 }}</span>
         </div>
         <img :src="prod.image" alt="Produk" class="rank-thumb" />
         <div class="rank-info">
@@ -291,11 +295,12 @@ input:focus, button:focus, *:focus {
 .laporan-container {
   padding: 16px 20px 100px;
   min-height: 100vh;
-  background: #f8f6f2;
+  background: #ffffff;
   max-width: 600px;
   margin: 0 auto;
   color: #111;
   font-family: Arial, sans-serif;
+  box-sizing: border-box;
 }
 
 .header-section h2 {
@@ -566,8 +571,8 @@ input:focus, button:focus, *:focus {
 }
 
 .rank-number {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   background: #f1f2f6;
   border-radius: 50%;
   display: flex;
@@ -579,9 +584,16 @@ input:focus, button:focus, *:focus {
   flex-shrink: 0;
 }
 
-.rank-number.rank-1 {
-  background: #fff3cd;
-  color: #856404;
+.rank-number.rank-1-box {
+  background: transparent;
+  width: 32px;
+  height: 32px;
+}
+
+.best-seller-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .rank-thumb {

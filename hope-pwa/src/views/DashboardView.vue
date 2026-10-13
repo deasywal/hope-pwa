@@ -8,13 +8,13 @@ const totalKeuntungan = ref(0)
 const totalModal = ref(0)
 const hasTransactions = ref(false)
 
-// ===== Helper tanggal =====
+// ===== Helper tanggal lokal (anti-UTC shift) =====
 function tanggalLokal(date = new Date()) {
   const pad = n => String(n).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
-// ===== State untuk data grafik 7 hari terakhir =====
+// State data grafik 7 hari terakhir
 const weeklyChartData = ref([
   { day: 'Sen', total: 0, height: 10 },
   { day: 'Sel', total: 0, height: 10 },
@@ -35,24 +35,41 @@ onMounted(() => {
   loadDashboardData(todayIso)
 })
 
-// ===== Fungsi Load & Hitung Data Dashboard =====
+// ===== Fungsi Load & Hitung Keuangan Berdasarkan HPP Asli =====
 function loadDashboardData(dateStr) {
   try {
     const savedTransactions = localStorage.getItem('transactionsList')
     const transactions = savedTransactions ? JSON.parse(savedTransactions) : []
 
+    const savedProducts = localStorage.getItem('productsList')
+    const products = savedProducts ? JSON.parse(savedProducts) : []
+
     if (Array.isArray(transactions) && transactions.length > 0) {
       hasTransactions.value = true
 
-      // Untuk hitung data untuk tanggal terpilih
       const selectedTransactions = transactions.filter(t => t.tanggal === dateStr)
-      const pemasukanHariIni = selectedTransactions.reduce((acc, curr) => acc + (Number(curr.total) || 0), 0)
+      
+      let pemasukanHariIni = 0
+      let modalHariIni = 0
+
+      selectedTransactions.forEach(t => {
+        pemasukanHariIni += Number(t.total) || 0
+
+        if (t.items && Array.isArray(t.items)) {
+          t.items.forEach(item => {
+            const product = products.find(p => p.id === item.produkId || (p.name === item.nama && p.variant === item.varian))
+            if (product) {
+              const modalSatuan = Number(product.costing?.totalCost || product.modal || product.cost || 0)
+              modalHariIni += modalSatuan * (Number(item.jumlah || item.qty) || 0)
+            }
+          })
+        }
+      })
 
       totalPemasukan.value = pemasukanHariIni
-      totalKeuntungan.value = pemasukanHariIni * 0.3
-      totalModal.value = pemasukanHariIni * 0.7
+      totalModal.value = modalHariIni
+      totalKeuntungan.value = pemasukanHariIni - modalHariIni
 
-      // Untuk hitung grafik minggu dari tanggal terpilih
       calculateChart(dateStr, transactions)
     } else {
       hasTransactions.value = false
@@ -61,16 +78,14 @@ function loadDashboardData(dateStr) {
       totalModal.value = 0
     }
   } catch (e) {
-    console.error('Gagal memuat data transaksi:', e)
+    console.error('Gagal memuat data dashboard:', e)
   }
 }
 
-// ===== Untuk Statistik Grafik =====
+// ===== Hitung Grafik Statistik =====
 function calculateChart(dateStr, transactions) {
   const [y, m, d] = dateStr.split('-').map(Number)
   const namaHari = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
-
-  // Untuk hari dan tanggal terpilih
   const selisihKeSenin = (new Date(y, m - 1, d).getDay() + 6) % 7
 
   const hari = namaHari.map((nama, i) => {
@@ -78,7 +93,6 @@ function calculateChart(dateStr, transactions) {
     return { key: tanggalLokal(dt), day: nama, total: 0 }
   })
 
-  // Untik transaksi sesuai tanggal aslinya
   transactions.forEach(t => {
     const target = hari.find(h => h.key === t.tanggal)
     if (target) target.total += Number(t.total) || 0
@@ -93,7 +107,6 @@ function calculateChart(dateStr, transactions) {
   }))
 }
 
-// ===== Handler Ubah Tanggal =====
 const onDateChange = (event) => {
   const chosenStr = event.target.value
   if (!chosenStr) return
@@ -110,7 +123,7 @@ const onDateChange = (event) => {
 <template>
   <div class="dashboard-container">
     
-    <!-- Kotak Tanggal dengan Tombol Ikon -->
+    <!-- Kotak Tanggal -->
     <section class="date-card">
       <div class="date-content">
         <span class="date-title">Tanggal:</span>
@@ -156,7 +169,7 @@ const onDateChange = (event) => {
             :key="idx" 
             class="bar active-bar" 
             :style="{ height: item.height + '%' }"
-            :title="item.day + ': Rp ' + item.total.toLocaleString()"
+            :title="item.day + ': Rp ' + item.total.toLocaleString('id-ID')"
           ></div>
         </div>
         <div class="chart-labels">
@@ -165,14 +178,14 @@ const onDateChange = (event) => {
       </div>
     </section>
 
-    <!-- Informasi Keuangan dengan Ikon -->
+    <!-- Informasi Keuangan -->
     <section class="financial-grid">
       <div class="card info-card">
         <div class="card-header-flex">
           <span class="card-title">Pemasukan Hari Ini</span>
           <img src="/images/icons8-money-50.png" alt="Pemasukan" class="card-icon" />
         </div>
-        <h4 class="card-value">Rp {{ totalPemasukan.toLocaleString() }}</h4>
+        <h4 class="card-value">Rp {{ totalPemasukan.toLocaleString('id-ID') }}</h4>
         <span class="card-trend up">Dari transaksi terbaru</span>
       </div>
 
@@ -190,7 +203,7 @@ const onDateChange = (event) => {
           <span class="card-title">Keuntungan</span>
           <img src="/images/icons8-profit-50.png" alt="Keuntungan" class="card-icon" />
         </div>
-        <h4 class="card-value">Rp {{ totalKeuntungan.toLocaleString() }}</h4>
+        <h4 class="card-value">Rp {{ totalKeuntungan.toLocaleString('id-ID') }}</h4>
         <span class="card-trend up">Estimasi bersih</span>
       </div>
 
@@ -199,7 +212,7 @@ const onDateChange = (event) => {
           <span class="card-title">Modal</span>
           <img src="/images/icons8-stock-50.png" alt="Modal" class="card-icon" />
         </div>
-        <h4 class="card-value">Rp {{ totalModal.toLocaleString() }}</h4>
+        <h4 class="card-value">Rp {{ totalModal.toLocaleString('id-ID') }}</h4>
         <span class="card-trend">Dari produk</span>
       </div>
     </section>
@@ -208,21 +221,33 @@ const onDateChange = (event) => {
 </template>
 
 <style scoped>
-.dashboard-container {
-  padding: 16px;
-  font-family: sans-serif;
-  background-color: #f8f9fa;
-  box-sizing: border-box;
+* {
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Kotak Tanggal */
+input:focus, button:focus, *:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.dashboard-container {
+  padding: 16px 20px 100px;
+  font-family: Arial, sans-serif;
+  background-color: #ffffff; /* Background disamakan putih bersih */
+  max-width: 600px;
+  margin: 0 auto;
+  min-height: 100vh;
+  box-sizing: border-box;
+  color: #111;
+}
+
 .date-card {
   background: #ffffff;
-  border: 1px solid #dcdde1;
-  border-radius: 10px;
-  padding: 12px 16px;
+  border: 2px solid #e0e3eb;
+  border-radius: 14px;
+  padding: 14px 18px;
   margin-bottom: 16px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -236,14 +261,14 @@ const onDateChange = (event) => {
 
 .date-title {
   font-size: 13px;
-  color: #718093;
+  color: #696d74;
   font-weight: bold;
 }
 
 .date-value {
   font-size: 13px;
   font-weight: bold;
-  color: #2f3640;
+  color: #1e272e;
 }
 
 .date-icon-wrapper {
@@ -258,15 +283,10 @@ const onDateChange = (event) => {
   background: #f1f2f6;
   border: 1px solid #dcdde1;
   padding: 6px;
-  border-radius: 6px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s ease;
-}
-
-.date-icon-wrapper:hover .date-icon-btn {
-  background-color: #dfe4ea;
 }
 
 .date-icon {
@@ -289,17 +309,17 @@ const onDateChange = (event) => {
 
 .card {
   background: #ffffff;
-  border: 1px solid #dcdde1;
-  border-radius: 12px;
+  border: 2px solid #e0e3eb;
+  border-radius: 16px;
   padding: 16px;
   margin-bottom: 16px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
 }
 
 .stats-header h3 {
   margin: 0 0 12px 0;
-  font-size: 13px;
-  color: #2f3640;
+  font-size: 15px;
+  color: #1e272e;
 }
 
 .empty-chart {
@@ -377,8 +397,8 @@ const onDateChange = (event) => {
 }
 
 .card-title {
-  font-size: 11px;
-  color: #718093;
+  font-size: 12px;
+  color: #696d74;
   font-weight: bold;
   margin-bottom: 0;
 }
@@ -392,13 +412,13 @@ const onDateChange = (event) => {
 
 .card-value {
   margin: 0 0 6px 0;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
-  color: #2f3640;
+  color: #1e272e;
 }
 
 .card-trend {
-  font-size: 10px;
+  font-size: 11px;
   color: #718093;
 }
 
