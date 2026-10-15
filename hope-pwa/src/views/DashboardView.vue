@@ -9,15 +9,22 @@ const totalModal = ref(0)
 const totalPengeluaran = ref(0)
 const hasTransactions = ref(false)
 
-// Form catat pengeluaran
+// catat pengeluaran
 const showExpenseForm = ref(false)
 const expenseNote = ref('')
 const expenseAmount = ref('')
+const pengeluaranList = ref([])
 
 // ===== Tanggal lokal =====
 function tanggalLokal(date = new Date()) {
   const pad = n => String(n).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+// ===== Format rupiah (mendukung nilai minus) =====
+function formatRupiah(angka) {
+  const n = Number(angka) || 0
+  return (n < 0 ? '-Rp ' : 'Rp ') + Math.abs(n).toLocaleString('id-ID')
 }
 
 // ===== Baca localStorage array =====
@@ -96,10 +103,12 @@ function loadDashboardData(dateStr) {
     console.log('Dashboard - Selected Date:', dateStr)
     console.log('Dashboard - Transactions:', transactions)
 
-    // Pengeluaran pada tanggal terpilih
-    totalPengeluaran.value = expenses
-      .filter(e => e.tanggal && String(e.tanggal).trim().substring(0, 10) === dateStr)
-      .reduce((acc, e) => acc + (Number(e.nominal) || 0), 0)
+    // Pengeluaran pada tanggal terpilih (terbaru di atas)
+    const pengeluaranTanggal = expenses.filter(
+      e => e.tanggal && String(e.tanggal).trim().substring(0, 10) === dateStr
+    )
+    pengeluaranList.value = [...pengeluaranTanggal].reverse()
+    totalPengeluaran.value = pengeluaranTanggal.reduce((acc, e) => acc + (Number(e.nominal) || 0), 0)
 
     if (transactions.length > 0) {
       hasTransactions.value = true
@@ -130,15 +139,15 @@ function loadDashboardData(dateStr) {
       totalPemasukan.value = pemasukanHariIni
       totalModal.value = Math.round(modalHariIni)
 
-      // Perhitungan Keuntungan bersih 
-      totalKeuntungan.value = pemasukanHariIni - Math.round(modalHariIni)
+      // Keuntungan bersih = pemasukan - modal - pengeluaran operasional
+      totalKeuntungan.value = pemasukanHariIni - Math.round(modalHariIni) - totalPengeluaran.value
 
       calculateChart(dateStr, transactions)
     } else {
       hasTransactions.value = false
       totalPemasukan.value = 0
-      totalKeuntungan.value = 0
       totalModal.value = 0
+      totalKeuntungan.value = 0 - totalPengeluaran.value
     }
   } catch (e) {
     console.error('Gagal memuat data dashboard:', e)
@@ -206,6 +215,14 @@ const simpanPengeluaran = () => {
   showExpenseForm.value = false
   loadDashboardData(selectedDate.value)
 }
+
+// ===== Hapus catatan pengeluaran =====
+const hapusPengeluaran = (id) => {
+  if (!confirm('Hapus catatan pengeluaran hari ini?')) return
+  const expenses = bacaList('expensesList').filter(e => e.id !== id)
+  localStorage.setItem('expensesList', JSON.stringify(expenses))
+  loadDashboardData(selectedDate.value)
+}
 </script>
 
 <template>
@@ -247,7 +264,7 @@ const simpanPengeluaran = () => {
           <div class="bar placeholder" style="height: 60%;"></div>
           <div class="bar placeholder" style="height: 30%;"></div>
         </div>
-        <p class="empty-text">Belum ada data penjualan. Grafik akan naik otomatis saat ada transaksi.</p>
+        <p class="empty-text">Grafik Penjualan</p>
       </div>
 
       <div v-else class="active-chart">
@@ -291,7 +308,7 @@ const simpanPengeluaran = () => {
           <span class="card-title">Keuntungan</span>
           <img src="/images/icons8-profit-50.png" alt="Keuntungan" class="card-icon" />
         </div>
-        <h4 class="card-value">Rp {{ totalKeuntungan.toLocaleString('id-ID') }}</h4>
+        <h4 class="card-value">{{ formatRupiah(totalKeuntungan) }}</h4>
         <span class="card-trend up">Estimasi bersih</span>
       </div>
 
@@ -315,20 +332,42 @@ const simpanPengeluaran = () => {
         <input
           v-model="expenseNote"
           type="text"
-          placeholder="Keterangan (contoh: Beli kemasan)"
+          placeholder="Keterangan (contoh: Plastik)"
           class="expense-input"
         />
         <input
           v-model="expenseAmount"
           type="text"
           inputmode="numeric"
-          placeholder="Nominal (contoh: 25000)"
+          placeholder="Nominal (contoh: 15000)"
           class="expense-input"
         />
         <div class="expense-actions">
           <button @click="showExpenseForm = false" class="expense-cancel-btn">Batal</button>
           <button @click="simpanPengeluaran" class="expense-save-btn">Simpan</button>
         </div>
+      </div>
+    </section>
+
+    <!-- Catatan Pengeluaran Dari Tanggal Yang Terpilih -->
+    <section class="card expense-list-card">
+      <h3 class="expense-list-title">Catatan Pengeluaran</h3>
+
+      <p v-if="pengeluaranList.length === 0" class="expense-empty">
+        Belum ada catatan pengeluaran pada hari ini.
+      </p>
+
+      <div v-for="e in pengeluaranList" :key="e.id" class="expense-item">
+        <div class="expense-item-info">
+          <span class="expense-item-note">{{ e.keterangan }}</span>
+          <strong class="expense-item-amount">{{ formatRupiah(e.nominal) }}</strong>
+        </div>
+        <button class="expense-delete-btn" @click="hapusPengeluaran(e.id)">Hapus</button>
+      </div>
+
+      <div v-if="pengeluaranList.length > 0" class="expense-total">
+        <span>Total Pengeluaran Hari Ini</span>
+        <strong>{{ formatRupiah(totalPengeluaran) }}</strong>
       </div>
     </section>
 
@@ -424,7 +463,7 @@ input:focus, button:focus, *:focus {
 
 .card {
   background: #ffffff;
-  border: 2px solid #e0e3eb;
+  border: 2px solid  #e0e3eb;
   border-radius: 16px;
   padding: 16px;
   margin-bottom: 16px;
@@ -548,11 +587,12 @@ input:focus, button:focus, *:focus {
 
 .expense-toggle-btn {
   width: 100%;
-  padding: 12px;
+  padding: 14px;
   background: #ffffff;
-  border: 2px dashed #c8cbd6;
-  border-radius: 14px;
-  font-size: 13px;
+  border: 2px solid #e0e3eb;
+  border-radius: 16px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  font-size: 14px;
   font-weight: bold;
   color: #5352ed;
   cursor: pointer;
@@ -568,8 +608,8 @@ input:focus, button:focus, *:focus {
 .expense-input {
   width: 100%;
   box-sizing: border-box;
-  padding: 11px 12px;
-  border: 1px solid #dcdde1;
+  padding: 12px;
+  border: 2px solid #d9dce5;
   border-radius: 10px;
   font-size: 14px;
 }
@@ -582,10 +622,10 @@ input:focus, button:focus, *:focus {
 .expense-cancel-btn,
 .expense-save-btn {
   flex: 1;
-  padding: 11px;
+  padding: 12px;
   border: none;
   border-radius: 10px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: bold;
   cursor: pointer;
 }
@@ -598,5 +638,68 @@ input:focus, button:focus, *:focus {
 .expense-save-btn {
   background: #5352ed;
   color: #ffffff;
+}
+
+/* ===== Catatan Pengeluaran ===== */
+.expense-list-card {
+  margin-top: 16px;
+  margin-bottom: 0;
+}
+
+.expense-list-title {
+  margin: 0 0 10px 0;
+  font-size: 15px;
+  color: #1e272e;
+}
+
+.expense-empty {
+  margin: 0;
+  font-size: 13px;
+  color: #718093;
+}
+
+.expense-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.expense-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.expense-item-note {
+  font-size: 13px;
+  color: #2f3640;
+  word-break: break-word;
+}
+
+.expense-item-amount {
+  font-size: 14px;
+  color: #1e272e;
+}
+
+.expense-delete-btn {
+  background: #ff4d4d;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.expense-total {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 12px;
+  font-size: 14px;
 }
 </style>
