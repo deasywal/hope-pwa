@@ -398,11 +398,12 @@ function tutupForm(tab) {
 
     <!-- Halaman form Penjualan -->
     <template v-else>
-      <button class="back-button" @click="tutupForm()">
-        ← Kembali
-      </button>
-
-      <h2>{{ editId !== null ? 'Edit Penjualan' : 'Catat Penjualan' }}</h2>
+      <div class="header-nav">
+        <h3 class="page-title">{{ editId !== null ? 'Edit Penjualan' : 'Catat Penjualan' }}</h3>
+        <button @click="tutupForm()" class="action-btn">
+          Batal
+        </button>
+      </div>
 
       <p v-if="produkList.length === 0" class="empty-info">
         Belum ada produk. Tambahkan produk dulu di tab Produk.
@@ -497,9 +498,30 @@ h1 {
   color: #1e272e;
 }
 
-h2 {
-  margin: 0 0 8px;
+.header-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: bold;
   color: #1e272e;
+}
+
+.action-btn {
+  background-color: #3367DA;
+  color: white;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .subtitle {
@@ -532,7 +554,7 @@ h2 {
 }
 
 .tabs button.active {
-  background: #5352ed;
+  background: #3367DA;
   color: white;
   box-shadow: 0 2px 6px rgba(83, 82, 237, 0.3);
 }
@@ -550,7 +572,7 @@ h2 {
   box-shadow: 0 2px 4px rgba(0,0,0,0.02);
 }
 
-/* Border Biru khusus untuk kartu Penjualan Hari Ini */
+/* Border untuk Penjualan Hari Ini */
 .summary-card-blue-border {
   border: 2px solid #7477ee !important;
   box-shadow: 0 2px 6px rgba(116, 119, 238, 0.15) !important;
@@ -571,7 +593,7 @@ h2 {
 .summary-icon {
   width: 20px;
   height: 20px;
-  color: #5352ed;
+  color: #3367DA;
   flex-shrink: 0;
 }
 
@@ -694,7 +716,7 @@ h2 {
 .btn-edit {
   background: #e8f4f8;
   border: 1px solid #70a1ff;
-  color: #5352ed;
+  color: #3367DA;
 }
 
 .btn-hapus {
@@ -713,17 +735,6 @@ h2 {
   font-size: 16px;
   font-weight: bold;
   margin: 12px 0;
-  cursor: pointer;
-}
-
-.back-button {
-  border: none;
-  background: none;
-  color: #1e272e;
-  font-size: 14px;
-  font-weight: bold;
-  padding: 0;
-  margin-bottom: 12px;
   cursor: pointer;
 }
 

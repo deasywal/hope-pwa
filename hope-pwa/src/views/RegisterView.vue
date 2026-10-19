@@ -373,7 +373,7 @@ const handleRegister = () => {
 }
 
 .login-nav-link {
-  color: #3498db;
+  color: #3367DA;
   text-decoration: none;
   font-weight: bold;
 }

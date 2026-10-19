@@ -702,7 +702,7 @@ input.no-spinner {
 }
 
 .filter-item.active {
-  background-color: #5352ed;
+  background-color: #3367DA;
   color: white;
   font-weight: bold;
 }
@@ -823,7 +823,7 @@ input.no-spinner {
   margin: 0 0 16px 0;
   font-size: 14px;
   font-weight: bold;
-  color: #5352ed;
+  color: #3367DA;
   text-align: center;
   border-bottom: 1px solid #dcdde1;
   padding-bottom: 8px;
@@ -869,7 +869,7 @@ input.no-spinner {
 
 .add-new-option {
   font-weight: bold;
-  color: #5352ed;
+  color: #3367DA;
   background-color: #f0f8ff;
 }
 
@@ -932,7 +932,7 @@ input.no-spinner {
 
 .compact-unit:focus {
   outline: none;
-  border-color: #5352ed;
+  border-color: #3367DA;
 }
 
 .ingredient-input-container {
@@ -944,7 +944,7 @@ input.no-spinner {
 }
 
 .action-btn {
-  background-color: #5352ed;
+  background-color: #3367DA;
   color: white;
   border: none;
   padding: 12px 16px;
@@ -1089,7 +1089,7 @@ input.no-spinner {
 .btn-edit {
   background: #e8f4f8;
   border: 1px solid #70a1ff;
-  color: #5352ed;
+  color: #3367DA;
 }
 
 .btn-hapus {
@@ -1152,9 +1152,9 @@ input.no-spinner {
 }
 
 .hpp-tab-btn.active {
-  background-color: #5352ed;
+  background-color: #3367DA;
   color: #ffffff;
-  border-color: #5352ed;
+  border-color: #3367DA;
 }
 
 .ingredient-table {
@@ -1207,7 +1207,7 @@ input.no-spinner {
   padding: 10px 12px;
   background-color: #f0f8ff;
   font-weight: bold;
-  color: #5352ed;
+  color: #3367DA;
 }
 
 .batch-output-box {

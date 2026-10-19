@@ -306,7 +306,7 @@ function kembali() {
   width: 54px;
   height: 54px;
   border-radius: 50%;
-  background: #7774ed;
+  background: #3367DA;
   color: white;
   display: flex;
   align-items: center;
@@ -360,7 +360,7 @@ h3 {
   height: 40px;
   border-radius: 12px;
   background: #f1efff;
-  color: #7774ed;
+  color: #3367DA;
   flex-shrink: 0;
 }
 
@@ -505,7 +505,7 @@ h3 {
 }
 
 .btn-save {
-  background: #7774ed;
+  background: #3367DA;
   color: white;
 }
 </style>

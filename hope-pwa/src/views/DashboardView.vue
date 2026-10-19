@@ -503,7 +503,7 @@ input:focus, button:focus, *:focus {
 
 .bar.active-bar {
   width: 24px;
-  background-color: #5352ed;
+  background-color: #3367DA;
   border-radius: 6px 6px 0 0;
   transition: height 0.3s ease;
 }

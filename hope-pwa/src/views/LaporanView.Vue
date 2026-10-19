@@ -389,7 +389,7 @@ input:focus, button:focus, *:focus {
 }
 
 .tab-btn.active {
-  background: #5352ed;
+  background: #3367DA;
   color: white;
   box-shadow: 0 2px 6px rgba(83, 82, 237, 0.3);
 }
@@ -672,7 +672,7 @@ input:focus, button:focus, *:focus {
 .rank-total {
   font-size: 13px;
   font-weight: bold;
-  color: #5352ed;
+  color: #3367DA;
   flex-shrink: 0;
 }
 </style>

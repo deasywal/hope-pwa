@@ -275,7 +275,7 @@ const handleForgotPassword = () => {
   padding-right: 40px;
 }
 
-/* Mematikan ikon mata bawaan browser agar tidak dobel */
+/* Mematikan ikon bawaan browser */
 .password-input::-ms-reveal,
 .password-input::-ms-clear {
   display: none;
@@ -314,7 +314,7 @@ const handleForgotPassword = () => {
 .login-btn {
   width: 100%;
   padding: 12px;
-  background-color: #3498db;
+  background-color: #3367DA;
   color: white;
   border: none;
   border-radius: 6px;
@@ -326,7 +326,7 @@ const handleForgotPassword = () => {
 }
 
 .login-btn:hover {
-  background-color: #2980b9;
+  background-color: #3367DA;
 }
 
 .divider {
