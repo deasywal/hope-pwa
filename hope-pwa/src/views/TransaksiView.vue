@@ -309,7 +309,7 @@ function tutupForm(tab) {
         </button>
       </div>
 
-      <!-- Kartu Penjualan Hari Ini (Diberi Border Biru Khusus) -->
+      <!-- Kartu Penjualan Hari Ini -->
       <div v-if="tabAktif === 'hari-ini'" class="summary-card summary-card-blue-border">
         <h3 class="summary-title">
           <svg class="summary-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -574,7 +574,7 @@ h1 {
 
 /* Border untuk Penjualan Hari Ini */
 .summary-card-blue-border {
-  border: 2px solid #7477ee !important;
+  border: 2px solid #3367DA !important;
   box-shadow: 0 2px 6px rgba(116, 119, 238, 0.15) !important;
 }
 

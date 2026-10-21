@@ -6,7 +6,7 @@ const productList = ref([])
 const transactionList = ref([])
 const aktifTab = ref('statistik') // 'statistik' atau 'terlaris'
 
-// Helper tanggal lokal (YYYY-MM-DD), bukan UTC supaya tidak mundur sehari dini hari
+// Helper tanggal
 function tanggalLokal(date = new Date()) {
   const pad = n => String(n).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
@@ -83,7 +83,7 @@ onMounted(() => {
   }
 })
 
-// Transaksi valid = tidak bertanggal di masa depan
+// Transaksi valid
 const transaksiValid = computed(() =>
   transactionList.value.filter(t => t.tanggal && String(t.tanggal).trim().substring(0, 10) <= hariIni)
 )
@@ -93,14 +93,14 @@ const transaksiBulan = computed(() =>
   transaksiValid.value.filter(t => String(t.tanggal).trim().substring(0, 7) === bulanFilter.value)
 )
 
-// Riwayat bulan ini, terbaru di atas (tanggal, lalu id)
+// Riwayat bulan ini
 const transaksiBulanUrut = computed(() =>
   [...transaksiBulan.value].sort((a, b) =>
     String(b.tanggal).localeCompare(String(a.tanggal)) || (b.id || 0) - (a.id || 0)
   )
 )
 
-// HPP per pcs: snapshot di item -> data produk -> 0 (sama dengan hitungan di Beranda)
+// HPP per pcs
 function hppSatuan(item) {
   const snapshot = Number(item.hpp ?? item.hppPerPcs ?? 0)
   if (snapshot > 0) return snapshot
@@ -166,7 +166,7 @@ const produkTerlarisList = computed(() => {
         const key = `${cleanName}-${cleanVar}`
 
         if (!penjualanMap[key]) {
-          // Gambar diambil dari data produk (item transaksi tidak menyimpan gambar)
+          // Gambar diambil dari data produk
           const prod = productList.value.find(p => p.id === (item.produkId ?? item.productId))
           penjualanMap[key] = {
             nama: item.nama || item.name,
@@ -409,7 +409,7 @@ input:focus, button:focus, *:focus {
 .filter-text {
   font-weight: bold;
   font-size: 15px;
-  color: #31517d;
+  color: ##3367DA;
 }
 
 .filter-right-wrapper {
@@ -445,7 +445,7 @@ input:focus, button:focus, *:focus {
 
 .main-revenue-banner-white {
   background: white;
-  border: 2px solid #7477ee;
+  border: 2px solid #3367DA;
   border-radius: 16px;
   padding: 20px;
   color: #111;

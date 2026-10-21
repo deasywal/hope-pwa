@@ -45,12 +45,9 @@ function ambilQty(item) {
 
 // ===== Perhitungan HPP per pcs dari item transaksi =====
 function hppSatuan(item, products, adaItems) {
-
-  // 1. HPP disimpan saat transaksi dicatat
   const snapshot = Number(item.hpp ?? item.hppPerPcs ?? item.modal ?? item.cost ?? 0)
   if (snapshot > 0) return snapshot
 
-  // Produk berdasarkan ID atau kecocokan nama & varian
   const itemId = item.produkId ?? item.productId ?? (adaItems ? item.id : null)
   const trxName = (item.nama || item.name || '').trim().toLowerCase()
   const trxVar = (item.varian || item.variant || 'original').trim().toLowerCase()
@@ -62,7 +59,6 @@ function hppSatuan(item, products, adaItems) {
   })
   if (!product) return 0
 
-  // HPP per PCS
   return Number(
     product.costing?.hppPerPcs ??
     product.costing?.totalCost ??
@@ -100,10 +96,6 @@ function loadDashboardData(dateStr) {
     const products = bacaList('productsList')
     const expenses = bacaList('expensesList')
 
-    console.log('Dashboard - Selected Date:', dateStr)
-    console.log('Dashboard - Transactions:', transactions)
-
-    // Pengeluaran pada tanggal terpilih (terbaru di atas)
     const pengeluaranTanggal = expenses.filter(
       e => e.tanggal && String(e.tanggal).trim().substring(0, 10) === dateStr
     )
@@ -113,7 +105,6 @@ function loadDashboardData(dateStr) {
     if (transactions.length > 0) {
       hasTransactions.value = true
 
-      // Filter transaksi berdasarkan tanggal
       const selectedTransactions = transactions.filter(t => {
         if (!t.tanggal) return false
         const tClean = String(t.tanggal).trim().substring(0, 10)
@@ -126,7 +117,6 @@ function loadDashboardData(dateStr) {
       selectedTransactions.forEach(t => {
         pemasukanHariIni += Number(t.total) || 0
 
-        // Format transaksi: array items
         const adaItems = Array.isArray(t.items) && t.items.length > 0
         const items = adaItems ? t.items : [t]
 
@@ -138,8 +128,6 @@ function loadDashboardData(dateStr) {
 
       totalPemasukan.value = pemasukanHariIni
       totalModal.value = Math.round(modalHariIni)
-
-      // Keuntungan bersih = pemasukan - modal - pengeluaran operasional
       totalKeuntungan.value = pemasukanHariIni - Math.round(modalHariIni) - totalPengeluaran.value
 
       calculateChart(dateStr, transactions)
@@ -154,12 +142,11 @@ function loadDashboardData(dateStr) {
   }
 }
 
-// ===== Hitung Grafik Statistik (7 hari terakhir, berakhir di tanggal terpilih) =====
+// ===== Hitung Grafik Statistik (7 hari terakhir) =====
 function calculateChart(dateStr, transactions) {
   const [y, m, d] = dateStr.split('-').map(Number)
   const namaHari = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
 
-  // i = 0 -> 6 hari sebelum tanggal terpilih, i = 6 -> tanggal terpilih
   const hari = Array.from({ length: 7 }, (_, i) => {
     const dt = new Date(y, m - 1, d - 6 + i)
     return { key: tanggalLokal(dt), day: namaHari[dt.getDay()], total: 0 }
@@ -193,7 +180,7 @@ const onDateChange = (event) => {
   loadDashboardData(chosenStr)
 }
 
-// ===== Simpan pengeluaran (biaya operasional) =====
+// ===== Simpan pengeluaran =====
 const simpanPengeluaran = () => {
   const nominal = Number(String(expenseAmount.value).replace(/\D/g, ''))
   if (!expenseNote.value.trim() || nominal <= 0) {
@@ -396,7 +383,7 @@ input:focus, button:focus, *:focus {
 }
 
 .date-card {
-  background: #ffffff;
+  background:  #ffffff;
   border: 2px solid #e0e3eb;
   border-radius: 14px;
   padding: 14px 18px;
@@ -594,7 +581,7 @@ input:focus, button:focus, *:focus {
   box-shadow: 0 2px 4px rgba(0,0,0,0.02);
   font-size: 14px;
   font-weight: bold;
-  color: #5352ed;
+  color: #3367DA;
   cursor: pointer;
 }
 
@@ -636,7 +623,7 @@ input:focus, button:focus, *:focus {
 }
 
 .expense-save-btn {
-  background: #5352ed;
+  background: #3367DA;
   color: #ffffff;
 }
 

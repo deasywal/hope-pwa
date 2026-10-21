@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -13,6 +13,13 @@ const togglePasswordVisibility = () => {
   showPassword.value = !showPassword.value
 }
 
+onMounted(() => {
+  // Cek apakah sudah login, jika ya langsung arahkan ke dashboard
+  if (localStorage.getItem('isLoggedIn') === 'true') {
+    router.replace('/dashboard')
+  }
+})
+
 const handleLogin = () => {
   errorMessage.value = ''
   successMessage.value = ''
@@ -25,6 +32,19 @@ const handleLogin = () => {
   const savedData = localStorage.getItem('registeredAccount')
   
   if (!savedData) {
+    // Jika belum ada akun terdaftar sama sekali, buatkan akun baru otomatis dari input login
+    const newAccount = {
+      email: email.value.trim().toLowerCase(),
+      password: password.value,
+      namaPemilik: 'Pemilik UMKM',
+      namaUsaha: 'Bananif'
+    }
+    localStorage.setItem('registeredAccount', JSON.stringify(newAccount))
+    localStorage.setItem('umkmOwnerName', newAccount.namaPemilik)
+    localStorage.setItem('umkmBrandName', newAccount.namaUsaha)
+    localStorage.setItem('umkmPhone', newAccount.email)
+    localStorage.setItem('isLoggedIn', 'true')
+
     successMessage.value = 'Login Berhasil! Mengalihkan...'
     setTimeout(() => {
       router.push('/dashboard')
@@ -34,10 +54,20 @@ const handleLogin = () => {
 
   const account = JSON.parse(savedData)
 
-  if (email.value.trim() !== account.email || password.value !== account.password) {
+  // Validasi email (mengabaikan perbedaan huruf besar/kecil) dan password
+  const inputEmail = email.value.trim().toLowerCase()
+  const registeredEmail = (account.email || '').trim().toLowerCase()
+
+  if (inputEmail !== registeredEmail || password.value !== account.password) {
     errorMessage.value = 'Email atau password salah!'
     return
   }
+
+  // Sinkronisasi data akun yang tersimpan ke profil & status login
+  localStorage.setItem('isLoggedIn', 'true')
+  if (account.namaPemilik) localStorage.setItem('umkmOwnerName', account.namaPemilik)
+  if (account.namaUsaha) localStorage.setItem('umkmBrandName', account.namaUsaha)
+  if (account.email) localStorage.setItem('umkmPhone', account.email)
 
   successMessage.value = 'Login Berhasil! Mengalihkan...'
   setTimeout(() => {
@@ -60,9 +90,9 @@ const handleForgotPassword = () => {
   <div class="login-container">
     <div class="login-card">
       
-      <!-- Header Brand -->
+      <!-- Header Brand dengan Gambar Logo Asli (Rata Tengah & Pas) -->
       <div class="brand-section">
-        <h1 class="brand-title">HOPE</h1>
+        <img src="/images/Hope_logo.png" alt="HOPE Logo" class="brand-logo-img" />
         <p class="brand-subtitle">Hitung Omset dan Penjualan Elektronik</p>
       </div>
 
@@ -159,24 +189,27 @@ const handleForgotPassword = () => {
   box-sizing: border-box;
 }
 
+/* Styling Brand & Logo Center */
 .brand-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   margin-bottom: 25px;
 }
 
-.brand-title {
-  font-size: 28px;
-  font-weight: 800;
-  color: #2c3e50;
-  margin: 0;
-  letter-spacing: 1px;
+.brand-logo-img {
+  height: 54px;
+  width: auto;
+  object-fit: contain;
+  margin-bottom: 6px;
 }
 
 .brand-subtitle {
   font-size: 13px;
   color: #7f8c8d;
-  margin-top: 5px;
-  margin-bottom: 0;
+  margin: 0;
 }
 
 .form-title {
@@ -269,13 +302,13 @@ const handleForgotPassword = () => {
   box-sizing: border-box;
   outline: none;
   transition: border-color 0.2s;
+  color: #2c3e50;
 }
 
 .password-input {
   padding-right: 40px;
 }
 
-/* Mematikan ikon bawaan browser */
 .password-input::-ms-reveal,
 .password-input::-ms-clear {
   display: none;
@@ -326,7 +359,7 @@ const handleForgotPassword = () => {
 }
 
 .login-btn:hover {
-  background-color: #3367DA;
+  background-color: #2851b8;
 }
 
 .divider {

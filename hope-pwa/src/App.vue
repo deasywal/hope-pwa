@@ -6,15 +6,7 @@ const route = useRoute()
 const router = useRouter()
 
 const showProfileMenu = ref(false)
-const showProfileModal = ref(false)
 const brandName = ref(localStorage.getItem('umkmBrandName') || 'Bananif')
-const phoneNum = ref(localStorage.getItem('umkmPhone') || '')
-
-const editForm = ref({
-  brandName: brandName.value,
-  phone: phoneNum.value,
-  password: ''
-})
 
 // Untuk update brand name secara langsung
 onMounted(() => {
@@ -27,25 +19,9 @@ const toggleProfileMenu = () => {
   showProfileMenu.value = !showProfileMenu.value
 }
 
-const openProfileModal = () => {
-  editForm.value.brandName = brandName.value
-  editForm.value.phone = phoneNum.value
+const goToProfile = () => {
   showProfileMenu.value = false
-  showProfileModal.value = true
-}
-
-const saveProfileChanges = () => {
-  brandName.value = editForm.value.brandName
-  phoneNum.value = editForm.value.phone
-  
-  localStorage.setItem('umkmBrandName', brandName.value)
-  localStorage.setItem('umkmPhone', phoneNum.value)
-  if (editForm.value.password) {
-    localStorage.setItem('umkmPassword', editForm.value.password)
-  }
-
-  showProfileModal.value = false
-  alert('Informasi usaha berhasil diperbarui!')
+  router.push('/profil')
 }
 
 const logout = () => {
@@ -64,55 +40,37 @@ const hideNav = computed(() => {
     
     <!-- Header Global -->
     <header v-if="!hideNav" class="app-header">
+      <!-- Logo pojok kiri atas -->
+      <div class="header-logo">
+        <div class="logo-crop">
+          <img src="/images/Hope_logo.png" alt="HOPE" class="logo-img" />
+        </div>
+      </div>
+
       <div class="welcome-header-text">
         <h2>Halo, Pemilik UMKM {{ brandName }}</h2>
         <p>Semangat terus mengembangkan usahamu!</p>
       </div>
 
+      <!-- Tombol Menu di Kanan Atas -->
       <div class="profile-wrapper">
         <button @click="toggleProfileMenu" class="profile-btn">
           <span>Menu</span>
           <span class="dropdown-arrow">▼</span>
         </button>
 
+        <!-- Kotak Dropdown Menu yang Diperbesar -->
         <div v-if="showProfileMenu" class="profile-dropdown">
-          <button @click="openProfileModal" class="dropdown-item">Pengaturan Akun</button>
+          <button @click="goToProfile" class="dropdown-item">Profil</button>
           <button @click="logout" class="dropdown-item logout">Keluar</button>
         </div>
       </div>
     </header>
 
-    <!-- Konten Halaman (Dashboard, Produk, Transaksi, Laporan) -->
+    <!-- Konten Halaman (Dashboard, Produk, Transaksi, Laporan, Profil) -->
     <main class="main-content">
       <RouterView />
     </main>
-
-    <!-- Pengaturan Akun -->
-    <div v-if="showProfileModal" class="modal-overlay">
-      <div class="modal-content">
-        <h3>Pengaturan UMKM & Profil</h3>
-        
-        <div class="input-group">
-          <label>Nama Usaha / Brand</label>
-          <input v-model="editForm.brandName" type="text" placeholder="Contoh: HOPE Elektronik" />
-        </div>
-
-        <div class="input-group">
-          <label>Email Yang Digunakan </label>
-          <input v-model="editForm.phone" type="text" placeholder="Contoh: 081234567890" />
-        </div>
-
-        <div class="input-group">
-          <label>Password Baru (Opsional)</label>
-          <input v-model="editForm.password" type="password" placeholder="Kosongkan jika tidak diubah" />
-        </div>
-
-        <div class="modal-actions">
-          <button @click="showProfileModal = false" class="btn-cancel">Batal</button>
-          <button @click="saveProfileChanges" class="btn-save">Simpan</button>
-        </div>
-      </div>
-    </div>
 
     <!-- Navbar Bawah -->
     <nav v-if="!hideNav" class="bottom-nav">
@@ -160,11 +118,29 @@ body {
 
 .app-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  align-items: flex-start;
-  padding: 16px 16px 0 16px;
+  align-items: center;
+  padding: 12px 16px 0 16px;
   margin-bottom: 12px;
   background-color: #ffffff;
+}
+
+.header-logo {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.logo-crop {
+  width: auto;
+  height: auto;
+}
+
+.logo-img {
+  display: block;
+  height: 44px;
+  width: auto;
+  background: none;
 }
 
 .welcome-header-text h2 {
@@ -186,42 +162,43 @@ body {
 .profile-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   background: #ffffff;
   border: 1px solid #dcdde1;
-  padding: 6px 14px;
-  border-radius: 20px;
+  padding: 10px 16px;
+  border-radius: 10px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: bold;
   color: #2f3640;
 }
 
 .dropdown-arrow {
-  font-size: 10px;
+  font-size: 11px;
   color: #718093;
 }
 
 .profile-dropdown {
   position: absolute;
   right: 0;
-  top: 40px;
+  top: 48px;
   background: #ffffff;
   border: 1px solid #dcdde1;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  width: 150px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  width: 160px;
   z-index: 1000;
   overflow: hidden;
 }
 
+/* Title Profil & Keluar */
 .dropdown-item {
   width: 100%;
-  padding: 10px 14px;
+  padding: 13px 16px;
   text-align: left;
   background: none;
   border: none;
-  font-size: 12px;
+  font-size: 14px;
   cursor: pointer;
   color: #2f3640;
   font-weight: bold;
@@ -229,7 +206,7 @@ body {
 }
 
 .dropdown-item:hover {
-  background-color: #f1f2f6;
+  background-color: #f5f6fa;
 }
 
 .dropdown-item.logout {
@@ -289,86 +266,5 @@ body {
 
 .nav-item.active .nav-icon {
   opacity: 1;
-}
-
-/* Modal Styles */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-  padding: 16px;
-  box-sizing: border-box;
-}
-
-.modal-content {
-  background: #ffffff;
-  padding: 20px;
-  border-radius: 12px;
-  width: 100%;
-  max-width: 400px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-}
-
-.modal-content h3 {
-  margin: 0 0 16px 0;
-  font-size: 16px;
-  color: #2f3640;
-}
-
-.input-group {
-  margin-bottom: 12px;
-}
-
-.input-group label {
-  display: block;
-  font-size: 11px;
-  color: #718093;
-  font-weight: bold;
-  margin-bottom: 4px;
-}
-
-.input-group input {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid #dcdde1;
-  border-radius: 6px;
-  font-size: 13px;
-  box-sizing: border-box;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.btn-cancel {
-  background: #f1f2f6;
-  border: none;
-  padding: 8px 14px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: bold;
-  color: #718093;
-  cursor: pointer;
-}
-
-.btn-save {
-  background: #2f3640;
-  border: none;
-  padding: 8px 14px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: bold;
-  color: #ffffff;
-  cursor: pointer;
 }
 </style>

@@ -663,7 +663,7 @@ input.no-spinner {
 
 .page-title {
   margin: 0;
-  font-size: 16px;
+  font-size: 20px;
   font-weight: bold;
   color: #1e272e;
 }

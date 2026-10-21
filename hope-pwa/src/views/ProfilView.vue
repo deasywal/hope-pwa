@@ -1,18 +1,36 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
-const namaPemilik = ref('Pemilik Bananif')
-const namaUsaha = ref('Bananif')
-const email = ref(localStorage.getItem('umkmEmail') || 'bananif@example.com')
+const namaPemilik = ref(localStorage.getItem('umkmOwnerName') || 'Asywal')
+const namaUsaha = ref(localStorage.getItem('umkmBrandName') || 'BANANIF')
+const kontak = ref(localStorage.getItem('umkmPhone') || 'bananif@example.com')
+const fotoProfil = ref(localStorage.getItem('umkmAvatar') || '')
+
+// ===== State Edit Profil / Usaha =====
+const showEditProfile = ref(false)
+const formProfile = ref({
+  namaPemilik: namaPemilik.value,
+  namaUsaha: namaUsaha.value,
+  kontak: kontak.value
+})
 
 // ===== Keamanan akun =====
 const showSecurity = ref(false)
 const adaPassword = ref(false)
-const form = ref({ email: '', passwordLama: '', passwordBaru: '', konfirmasi: '' })
+const formSecurity = ref({ passwordLama: '', passwordBaru: '', konfirmasi: '' })
 const error = ref('')
+
+onMounted(() => {
+  window.addEventListener('storage', () => {
+    namaPemilik.value = localStorage.getItem('umkmOwnerName') || 'Asywal'
+    namaUsaha.value = localStorage.getItem('umkmBrandName') || 'BANANIF'
+    kontak.value = localStorage.getItem('umkmPhone') || 'bananif@example.com'
+    fotoProfil.value = localStorage.getItem('umkmAvatar') || ''
+  })
+})
 
 function bantuan() {
   window.open(
@@ -21,46 +39,85 @@ function bantuan() {
   )
 }
 
+function handleAvatarUpload(event) {
+  const file = event.target.files[0]
+  if (file) {
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Ukuran file maksimal 2MB!')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      fotoProfil.value = e.target.result
+      localStorage.setItem('umkmAvatar', fotoProfil.value)
+    }
+    reader.readAsDataURL(file)
+  }
+}
+
+function bukaEditProfil() {
+  formProfile.value = {
+    namaPemilik: namaPemilik.value,
+    namaUsaha: namaUsaha.value,
+    kontak: kontak.value
+  }
+  showEditProfile.value = true
+}
+
+function simpanProfilUsaha() {
+  if (!formProfile.value.namaPemilik.trim() || !formProfile.value.namaUsaha.trim()) {
+    alert('Nama pemilik dan nama usaha tidak boleh kosong!')
+    return
+  }
+
+  namaPemilik.value = formProfile.value.namaPemilik.trim()
+  namaUsaha.value = formProfile.value.namaUsaha.trim()
+  kontak.value = formProfile.value.kontak.trim()
+
+  localStorage.setItem('umkmOwnerName', namaPemilik.value)
+  localStorage.setItem('umkmBrandName', namaUsaha.value)
+  localStorage.setItem('umkmPhone', kontak.value)
+
+  window.dispatchEvent(new Event('storage'))
+
+  showEditProfile.value = false
+  alert('Informasi profil dan usaha berhasil diperbarui!')
+}
+
 function keamanan() {
-  form.value = { email: email.value, passwordLama: '', passwordBaru: '', konfirmasi: '' }
+  formSecurity.value = { passwordLama: '', passwordBaru: '', konfirmasi: '' }
   adaPassword.value = !!localStorage.getItem('umkmPassword')
   error.value = ''
   showSecurity.value = true
 }
 
 function simpanKeamanan() {
-  const emailBaru = form.value.email.trim()
-  const ubahPassword = form.value.passwordBaru !== '' || form.value.konfirmasi !== ''
-
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailBaru)) {
-    error.value = 'Format email tidak valid.'
-    return
-  }
+  const ubahPassword = formSecurity.value.passwordBaru !== '' || formSecurity.value.konfirmasi !== ''
 
   if (ubahPassword) {
-    if (adaPassword.value && form.value.passwordLama !== localStorage.getItem('umkmPassword')) {
+    if (adaPassword.value && formSecurity.value.passwordLama !== localStorage.getItem('umkmPassword')) {
       error.value = 'Password saat ini salah.'
       return
     }
-    if (form.value.passwordBaru.length < 6) {
+    if (formSecurity.value.passwordBaru.length < 6) {
       error.value = 'Password baru minimal 6 karakter.'
       return
     }
-    if (form.value.passwordBaru !== form.value.konfirmasi) {
+    if (formSecurity.value.passwordBaru !== formSecurity.value.konfirmasi) {
       error.value = 'Konfirmasi password tidak sama.'
       return
     }
-    localStorage.setItem('umkmPassword', form.value.passwordBaru)
+    localStorage.setItem('umkmPassword', formSecurity.value.passwordBaru)
+  } else {
+    error.value = 'Silakan isi password baru.'
+    return
   }
 
-  email.value = emailBaru
-  localStorage.setItem('umkmEmail', emailBaru)
   showSecurity.value = false
-  alert('Keamanan akun berhasil diperbarui!')
+  alert('Password akun berhasil diperbarui!')
 }
 
 function kembali() {
-  // Kalau ada halaman sebelumnya, mundur. Kalau tidak (misal dibuka langsung), ke Beranda.
   if (window.history.state && window.history.state.back) {
     router.back()
   } else {
@@ -89,14 +146,27 @@ function kembali() {
     </div>
 
     <!-- Kartu Profil -->
-    <div class="profile-card">
-      <div class="avatar">
-        {{ namaPemilik.charAt(0) }}
+    <div class="profile-card" @click="$refs.avatarInput.click()" title="Klik untuk ganti foto profil">
+      <div class="avatar-container">
+        <img v-if="fotoProfil" :src="fotoProfil" alt="Avatar" class="avatar-img" />
+        <div v-else class="avatar">
+          {{ namaPemilik.charAt(0) }}
+        </div>
       </div>
+      <input 
+        ref="avatarInput" 
+        type="file" 
+        accept="image/png, image/jpeg" 
+        class="hidden-input" 
+        @change="handleAvatarUpload" 
+      />
 
-      <div>
-        <h2>{{ namaPemilik }}</h2>
-        <p>{{ namaUsaha }}</p>
+      <div class="profile-text-flex">
+        <div>
+          <h2>{{ namaPemilik }}</h2>
+          <p>{{ namaUsaha }}</p>
+        </div>
+        <button class="btn-edit-profile" @click.stop="bukaEditProfil">Edit Profil</button>
       </div>
     </div>
 
@@ -147,8 +217,8 @@ function kembali() {
         </span>
 
         <div>
-          <small>Alamat Email</small>
-          <strong>{{ email }}</strong>
+          <small>Email / No. WhatsApp</small>
+          <strong>{{ kontak }}</strong>
         </div>
       </div>
 
@@ -189,7 +259,7 @@ function kembali() {
 
         <div>
           <strong>Keamanan Akun</strong>
-          <small>Ubah email dan password</small>
+          <small>Ubah password</small>
         </div>
 
         <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -200,34 +270,52 @@ function kembali() {
 
     </div>
 
+    <!-- Modal Edit Profil & Usaha -->
+    <div v-if="showEditProfile" class="modal-overlay" @click.self="showEditProfile = false">
+      <div class="modal-box">
+        <h3>Edit Profil & Usaha</h3>
 
+        <label>Nama Pemilik UMKM</label>
+        <input v-model="formProfile.namaPemilik" type="text" placeholder="Nama Pemilik" />
+
+        <label class="input-gap">Nama Usaha / Brand</label>
+        <input v-model="formProfile.namaUsaha" type="text" placeholder="Nama Brand" />
+
+        <label class="input-gap">Email / No. WhatsApp</label>
+        <input v-model="formProfile.kontak" type="text" placeholder="Email atau No HP" />
+
+        <div class="modal-actions">
+          <button class="btn-cancel" @click="showEditProfile = false">Batal</button>
+          <button class="btn-save" @click="simpanProfilUsaha">Simpan</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Modal Keamanan Akun -->
     <div v-if="showSecurity" class="modal-overlay" @click.self="showSecurity = false">
       <div class="modal-box">
         <h3>Keamanan Akun</h3>
 
-        <label>Alamat Email</label>
-        <input v-model="form.email" type="email" placeholder="nama@gmail.com" />
-
-        <label>Ubah Password (opsional)</label>
+        <label v-if="adaPassword">Password Saat Ini</label>
         <input
           v-if="adaPassword"
-          v-model="form.passwordLama"
+          v-model="formSecurity.passwordLama"
           type="password"
           placeholder="Password saat ini"
         />
+
+        <label :class="{ 'input-gap': adaPassword }">Password Baru (min. 6 karakter)</label>
         <input
-          v-model="form.passwordBaru"
+          v-model="formSecurity.passwordBaru"
           type="password"
-          placeholder="Password baru (min. 6 karakter)"
-          class="input-gap"
+          placeholder="Password baru"
         />
+
+        <label class="input-gap">Ulangi Password Baru</label>
         <input
-          v-model="form.konfirmasi"
+          v-model="formSecurity.konfirmasi"
           type="password"
-          placeholder="Ulangi password baru"
-          class="input-gap"
+          placeholder="Konfirmasi password baru"
         />
 
         <p v-if="error" class="error-text">{{ error }}</p>
@@ -246,11 +334,11 @@ function kembali() {
 .profile-container {
   max-width: 600px;
   margin: 0 auto;
-  padding: 16px 20px 100px; /* bawah diberi ruang untuk navbar */
+  padding: 16px 20px 100px;
   min-height: 100vh;
-  background: #f8f6f2; /* beda dari header putih, seperti halaman Produk */
+  background: #ffffff; 
   font-family: Arial, sans-serif;
-  color: #111;
+  color: #1e272e;
   box-sizing: border-box;
 }
 
@@ -264,12 +352,13 @@ function kembali() {
 
 .header h1 {
   margin: 0;
-  font-size: 22px;
+  font-size: 20px;
+  color: #1e272e;
 }
 
 .header p {
   margin: 3px 0 0;
-  color: #444;
+  color: #57606f;
   font-size: 13px;
 }
 
@@ -282,7 +371,7 @@ function kembali() {
   border: none;
   border-radius: 50%;
   background: transparent;
-  color: #111;
+  color: #1e272e;
   cursor: pointer;
 }
 
@@ -298,45 +387,85 @@ function kembali() {
   gap: 16px;
   padding: 16px 18px;
   border-radius: 16px;
-  background: #f1efff;
+  background: #ffffff;
+  border: 1px solid #dcdde1;
   margin-bottom: 18px;
+  cursor: pointer;
 }
 
-.avatar {
+.avatar-container {
+  position: relative;
   width: 54px;
   height: 54px;
   border-radius: 50%;
-  background: #3367DA;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.avatar {
+  width: 100%;
+  height: 100%;
+  background: #5352ed;
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 22px;
   font-weight: bold;
-  flex-shrink: 0;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hidden-input {
+  display: none;
+}
+
+.profile-text-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex: 1;
 }
 
 .profile-card h2 {
   margin: 0;
-  font-size: 17px;
+  font-size: 16px;
+  color: #1e272e;
 }
 
 .profile-card p {
   margin: 4px 0 0;
+  font-size: 13px;
+  color: #57606f;
+}
+
+.btn-edit-profile {
+  background-color: #5352ed;
+  color: white;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 10px;
   font-size: 14px;
-  color: #444;
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 h3 {
   margin: 18px 0 10px;
-  font-size: 16px;
+  font-size: 15px;
+  color: #1e272e;
 }
 
 /* ===== Kartu daftar ===== */
 .info-card,
 .menu-card {
   background: #ffffff;
-  border: 1px solid #e3e6ed;
+  border: 1px solid #dcdde1;
   border-radius: 16px;
   overflow: hidden;
 }
@@ -346,7 +475,7 @@ h3 {
   align-items: center;
   gap: 14px;
   padding: 14px 16px;
-  border-bottom: 1px solid #eeeeee;
+  border-bottom: 1px solid #f1f2f6;
 }
 
 .info-item:last-child {
@@ -359,8 +488,8 @@ h3 {
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  background: #f1efff;
-  color: #3367DA;
+  background: #f0f8ff;
+  color: #5352ed;
   flex-shrink: 0;
 }
 
@@ -378,12 +507,13 @@ h3 {
 
 .info-item small,
 .menu-item small {
-  color: #444;
+  color: #718093;
   font-size: 12px;
 }
 
 .info-item strong {
-  font-size: 14px;
+  font-size: 13px;
+  color: #1e272e;
   overflow-wrap: anywhere;
 }
 
@@ -395,9 +525,9 @@ h3 {
   gap: 14px;
   padding: 14px 16px;
   border: none;
-  border-bottom: 1px solid #eeeeee;
+  border-bottom: 1px solid #f1f2f6;
   background: white;
-  color: #111;
+  color: #1e272e;
   text-align: left;
   font-family: inherit;
   cursor: pointer;
@@ -408,7 +538,7 @@ h3 {
 }
 
 .menu-item:active {
-  background: #f7f7ff;
+  background: #f5f6fa;
 }
 
 .menu-item div {
@@ -419,17 +549,18 @@ h3 {
 }
 
 .menu-item strong {
-  font-size: 14px;
+  font-size: 13px;
+  color: #1e272e;
 }
 
 .chevron {
   width: 20px;
   height: 20px;
-  color: #666;
+  color: #718093;
   flex-shrink: 0;
 }
 
-/* ===== Modal keamanan ===== */
+/* ===== Modal ===== */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -453,12 +584,14 @@ h3 {
 
 .modal-box h3 {
   margin: 0 0 6px;
+  color: #1e272e;
 }
 
 .modal-box label {
   display: block;
   font-size: 12px;
   font-weight: bold;
+  color: #1e272e;
   margin: 14px 0 6px;
 }
 
@@ -466,20 +599,21 @@ h3 {
   width: 100%;
   box-sizing: border-box;
   padding: 11px 12px;
-  border: 1px solid #d9dce5;
+  border: 1px solid #dcdde1;
   border-radius: 8px;
-  font-size: 14px;
-  color: #111;
+  font-size: 13px;
+  color: #1e272e;
+  background: #fff;
 }
 
 .input-gap {
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .error-text {
   margin: 12px 0 0;
   font-size: 13px;
-  color: #d94b4b;
+  color: #ff4757;
 }
 
 .modal-actions {
@@ -501,11 +635,11 @@ h3 {
 
 .btn-cancel {
   background: #f1f2f6;
-  color: #444;
+  color: #57606f;
 }
 
 .btn-save {
-  background: #3367DA;
+  background: #2ed573;
   color: white;
 }
 </style>

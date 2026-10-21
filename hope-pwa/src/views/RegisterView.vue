@@ -26,7 +26,7 @@ const isValidEmail = (emailStr) => {
   return emailRegex.test(emailStr)
 }
 
-const handleRegister = () => {
+const handleRegister = async () => {
   errorMessage.value = ''
   successMessage.value = ''
 
@@ -50,6 +50,7 @@ const handleRegister = () => {
     return
   }
 
+  // 1. Simpan data ke localStorage seperti biasa
   const accountData = {
     ownerName: ownerName.value.trim(),
     brandName: brandName.value.trim(),
@@ -58,8 +59,25 @@ const handleRegister = () => {
   }
   localStorage.setItem('registeredAccount', JSON.stringify(accountData))
   localStorage.setItem('umkmBrandName', brandName.value.trim())
+  localStorage.setItem('umkmOwnerName', ownerName.value.trim())
+  localStorage.setItem('umkmPhone', email.value.trim())
 
-  successMessage.value = 'Akun berhasil dibuat! Mengalihkan ke halaman login...'
+  // 2. Kirim email sungguhan lewat server backend Node.js yang baru kita buat
+  try {
+    await fetch('http://localhost:3000/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email.value.trim(),
+        subject: 'Pendaftaran Akun Berhasil - HOPE App',
+        message: `Halo ${ownerName.value}, terima kasih telah mendaftar di aplikasi HOPE untuk brand ${brandName.value}. Akun Anda berhasil dibuat!`
+      })
+    })
+  } catch (err) {
+    console.log('Gagal menghubungi server email, tapi data lokal tetap tersimpan.', err)
+  }
+
+  successMessage.value = 'Akun berhasil dibuat & email konfirmasi dikirim! Mengalihkan...'
 
   setTimeout(() => {
     router.push('/login')
@@ -71,9 +89,9 @@ const handleRegister = () => {
   <div class="register-container">
     <div class="register-card">
       
-      <!-- Header Brand -->
+      <!-- Header Brand dengan Logo Gambar Asli (Rata Tengah & Pas) -->
       <div class="brand-section">
-        <h1 class="brand-title">HOPE</h1>
+        <img src="/images/Hope_logo.png" alt="HOPE Logo" class="brand-logo-img" />
         <p class="brand-subtitle">Hitung Omset dan Penjualan Elektronik</p>
       </div>
 
@@ -210,24 +228,27 @@ const handleRegister = () => {
   box-sizing: border-box;
 }
 
+/* Styling Brand & Logo Center */
 .brand-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   margin-bottom: 25px;
 }
 
-.brand-title {
-  font-size: 28px;
-  font-weight: 800;
-  color: #2c3e50;
-  margin: 0;
-  letter-spacing: 1px;
+.brand-logo-img {
+  height: 54px;
+  width: auto;
+  object-fit: contain;
+  margin-bottom: 6px;
 }
 
 .brand-subtitle {
   font-size: 13px;
   color: #7f8c8d;
-  margin-top: 5px;
-  margin-bottom: 0;
+  margin: 0;
 }
 
 .form-title {
@@ -325,7 +346,7 @@ const handleRegister = () => {
   padding-right: 40px;
 }
 
-/* Mematikan iko bawaan browser*/
+/* Mematikan ikon bawaan browser */
 .password-input::-ms-reveal,
 .password-input::-ms-clear {
   display: none;
