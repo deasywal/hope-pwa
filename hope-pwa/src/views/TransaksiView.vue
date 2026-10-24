@@ -53,6 +53,7 @@ onMounted(() => {
           varian: p.variant,
           harga: p.price,
           stok: p.stock,
+          minStok: Number(p.minStock) || 0,
           image: p.image || '',
           hpp: Number(p.costing?.totalCost ?? p.cost ?? 0) || 0
         }))
@@ -196,6 +197,24 @@ function hapusItemKeranjang(index) {
   keranjang.value.splice(index, 1)
 }
 
+// Cek produk terjual yang stoknya di bawah batas stok
+function cekStokMenipis() {
+  const idTerjual = [...new Set(keranjang.value.map(i => i.produkId))]
+  const daftar = []
+
+  idTerjual.forEach(id => {
+    const p = produkList.value.find(x => x.id === id)
+    if (!p) return
+    if (p.stok <= 0) {
+      daftar.push(`• ${p.nama} - ${p.varian}: stok habis`)
+    } else if (p.minStok > 0 && p.stok < p.minStok) {
+      daftar.push(`• ${p.nama} - ${p.varian}: sisa ${p.stok} pcs (batas ${p.minStok} pcs)`)
+    }
+  })
+
+  return daftar
+}
+
 function simpanTransaksi() {
   if (keranjang.value.length === 0) {
     alert('Tambahkan minimal satu produk!')
@@ -244,8 +263,20 @@ function simpanTransaksi() {
   localStorage.setItem('transactionsList', JSON.stringify(transaksiList.value))
   simpanStokProduk()
 
+  // Cek stok sebelum keranjang dikosongkan
+  const peringatanStok = cekStokMenipis()
+
   tutupForm(tanggal.value === hariIni ? 'hari-ini' : 'riwayat')
-  alert(sedangEdit ? 'Transaksi berhasil diperbarui dan disinkronkan ke Dashboard!' : 'Transaksi berhasil dicatat dan disinkronkan ke Dashboard!')
+
+  let pesan = sedangEdit
+    ? 'Transaksi berhasil diperbarui dan disinkronkan ke Dashboard!'
+    : 'Transaksi berhasil dicatat dan disinkronkan ke Dashboard!'
+
+  if (peringatanStok.length) {
+    pesan += '\n\n PERINGATAN STOCK!!!:\n' + peringatanStok.join('\n') + '\n\nSegera update produk Anda di menu Produk.'
+  }
+
+  alert(pesan)
 }
 
 function hapusTransaksi(transaksi) {

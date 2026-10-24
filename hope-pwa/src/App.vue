@@ -31,7 +31,7 @@ const logout = () => {
 
 // Buat Menghilangkan Navbar dan Header pas lagi dimenu Login / Register
 const hideNav = computed(() => {
-  return route.path === '/login' || route.path === '/register'
+  return route.path === '/' || route.path === '/login' || route.path === '/register'
 })
 </script>
 
@@ -40,16 +40,15 @@ const hideNav = computed(() => {
     
     <!-- Header Global -->
     <header v-if="!hideNav" class="app-header">
-      <!-- Logo pojok kiri atas -->
-      <div class="header-logo">
-        <div class="logo-crop">
+      <!-- Bagian Kiri: Logo & Sapaan -->
+      <div class="header-left">
+        <div class="header-logo">
           <img src="/images/Hope_logo.png" alt="HOPE" class="logo-img" />
         </div>
-      </div>
-
-      <div class="welcome-header-text">
-        <h2>Halo, Pemilik UMKM {{ brandName }}</h2>
-        <p>Semangat terus mengembangkan usahamu!</p>
+        <div class="welcome-header-text">
+          <h2>Halo, Pemilik UMKM {{ brandName }}</h2>
+          <p>Semangat terus mengembangkan usahamu!</p>
+        </div>
       </div>
 
       <!-- Tombol Menu di Kanan Atas -->
@@ -59,7 +58,7 @@ const hideNav = computed(() => {
           <span class="dropdown-arrow">▼</span>
         </button>
 
-        <!-- Kotak Dropdown Menu yang Diperbesar -->
+        <!-- Kotak Dropdown Menu -->
         <div v-if="showProfileMenu" class="profile-dropdown">
           <button @click="goToProfile" class="dropdown-item">Profil</button>
           <button @click="logout" class="dropdown-item logout">Keluar</button>
@@ -100,7 +99,7 @@ const hideNav = computed(() => {
 <style>
 body {
   margin: 0;
-  font-family: sans-serif;
+  font-family: Arial, sans-serif;
   background-color: #f5f6fa;
 }
 
@@ -118,40 +117,41 @@ body {
 
 .app-header {
   display: flex;
-  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px 0 16px;
-  margin-bottom: 12px;
+  padding: 16px;
   background-color: #ffffff;
+  border-bottom: 1px solid #f1f2f6;
+  gap: 12px;
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .header-logo {
-  width: 100%;
-  margin-bottom: 8px;
-}
-
-.logo-crop {
-  width: auto;
-  height: auto;
+  display: flex;
+  align-items: center;
 }
 
 .logo-img {
   display: block;
-  height: 44px;
+  height: 36px;
   width: auto;
   background: none;
 }
 
 .welcome-header-text h2 {
-  margin: 0 0 4px 0;
-  font-size: 16px;
+  margin: 0;
+  font-size: 15px;
   color: #2f3640;
 }
 
 .welcome-header-text p {
   margin: 0;
-  font-size: 12px;
+  font-size: 11px;
   color: #718093;
 }
 
@@ -165,40 +165,39 @@ body {
   gap: 8px;
   background: #ffffff;
   border: 1px solid #dcdde1;
-  padding: 10px 16px;
+  padding: 8px 14px;
   border-radius: 10px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: bold;
   color: #2f3640;
 }
 
 .dropdown-arrow {
-  font-size: 11px;
+  font-size: 10px;
   color: #718093;
 }
 
 .profile-dropdown {
   position: absolute;
   right: 0;
-  top: 48px;
+  top: 44px;
   background: #ffffff;
   border: 1px solid #dcdde1;
   border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-  width: 160px;
+  width: 150px;
   z-index: 1000;
   overflow: hidden;
 }
 
-/* Title Profil & Keluar */
 .dropdown-item {
   width: 100%;
-  padding: 13px 16px;
+  padding: 12px 16px;
   text-align: left;
   background: none;
   border: none;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   color: #2f3640;
   font-weight: bold;
@@ -216,6 +215,7 @@ body {
 
 .main-content {
   width: 100%;
+  box-sizing: border-box;
 }
 
 .bottom-nav {

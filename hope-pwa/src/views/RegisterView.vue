@@ -50,7 +50,7 @@ const handleRegister = async () => {
     return
   }
 
-  // 1. Simpan data ke localStorage seperti biasa
+  // 1. Simpan data ke localStorage
   const accountData = {
     ownerName: ownerName.value.trim(),
     brandName: brandName.value.trim(),
@@ -62,7 +62,7 @@ const handleRegister = async () => {
   localStorage.setItem('umkmOwnerName', ownerName.value.trim())
   localStorage.setItem('umkmPhone', email.value.trim())
 
-  // 2. Kirim email sungguhan lewat server backend Node.js yang baru kita buat
+  // 2. Send Real Email
   try {
     await fetch('http://localhost:3000/api/send-email', {
       method: 'POST',
@@ -92,11 +92,11 @@ const handleRegister = async () => {
       <!-- Header Brand dengan Logo Gambar Asli (Rata Tengah & Pas) -->
       <div class="brand-section">
         <img src="/images/Hope_logo.png" alt="HOPE Logo" class="brand-logo-img" />
-        <p class="brand-subtitle">Hitung Omset dan Penjualan Elektronik</p>
+        <p class="brand-subtitle">Hitung Omzet dan Penjualan Elektronik</p>
       </div>
 
       <h2 class="form-title">Buat Akun HOPE</h2>
-      <p class="form-desc">Kelola penjualan dan keuangan usaha dengan lebih mudah.</p>
+      <p class="form-desc">Kelola penjualan dan keuangan usaha anda dengan lebih mudah.</p>
 
       <div v-if="errorMessage" class="alert-box error">{{ errorMessage }}</div>
       <div v-if="successMessage" class="alert-box success">{{ successMessage }}</div>

@@ -27,7 +27,7 @@ const batchOutputQty = ref(1)
 
 const categoryOptions = ref(['Makanan', 'Minuman', 'Cemilan'])
 const variantOptions = ref(['Original', 'Coklat', 'Stroberi', 'Matcha', 'Keju'])
-const unitOptions = ref(['pcs', 'kg', 'gr', 'ons', 'liter', 'ml', 'bungkus'])
+const unitOptions = ref(['pcs', 'kg', 'gr', 'ons', 'liter', 'ml', 'pack'])
 
 const isAddingCategory = ref(false)
 const newCategoryInput = ref('')
@@ -610,7 +610,7 @@ const editProduct = (product) => {
 </template>
 
 <style scoped>
-/* Hilangkan efek highlight biru di HP dan outline fokus browser */
+/* Menghilangkan efek highlight*/
 * {
   -webkit-tap-highlight-color: transparent;
 }

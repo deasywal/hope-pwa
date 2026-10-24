@@ -14,7 +14,7 @@ const togglePasswordVisibility = () => {
 }
 
 onMounted(() => {
-  // Cek apakah sudah login, jika ya langsung arahkan ke dashboard
+  // Validasi login
   if (localStorage.getItem('isLoggedIn') === 'true') {
     router.replace('/dashboard')
   }
@@ -31,30 +31,15 @@ const handleLogin = () => {
 
   const savedData = localStorage.getItem('registeredAccount')
   
+  // CEK KELENGKAPAN AKUN: Jika belum ada akun terdaftar, tolak dan minta daftar dulu
   if (!savedData) {
-    // Jika belum ada akun terdaftar sama sekali, buatkan akun baru otomatis dari input login
-    const newAccount = {
-      email: email.value.trim().toLowerCase(),
-      password: password.value,
-      namaPemilik: 'Pemilik UMKM',
-      namaUsaha: 'Bananif'
-    }
-    localStorage.setItem('registeredAccount', JSON.stringify(newAccount))
-    localStorage.setItem('umkmOwnerName', newAccount.namaPemilik)
-    localStorage.setItem('umkmBrandName', newAccount.namaUsaha)
-    localStorage.setItem('umkmPhone', newAccount.email)
-    localStorage.setItem('isLoggedIn', 'true')
-
-    successMessage.value = 'Login Berhasil! Mengalihkan...'
-    setTimeout(() => {
-      router.push('/dashboard')
-    }, 800)
+    errorMessage.value = 'Akun belum terdaftar. Silakan daftar dulu di halaman Daftar.'
     return
   }
 
   const account = JSON.parse(savedData)
 
-  // Validasi email (mengabaikan perbedaan huruf besar/kecil) dan password
+  // Validasi email dan password
   const inputEmail = email.value.trim().toLowerCase()
   const registeredEmail = (account.email || '').trim().toLowerCase()
 
@@ -63,7 +48,7 @@ const handleLogin = () => {
     return
   }
 
-  // Sinkronisasi data akun yang tersimpan ke profil & status login
+  // Sinkronisasi data akun
   localStorage.setItem('isLoggedIn', 'true')
   if (account.namaPemilik) localStorage.setItem('umkmOwnerName', account.namaPemilik)
   if (account.namaUsaha) localStorage.setItem('umkmBrandName', account.namaUsaha)
@@ -90,7 +75,7 @@ const handleForgotPassword = () => {
   <div class="login-container">
     <div class="login-card">
       
-      <!-- Header Brand dengan Gambar Logo Asli (Rata Tengah & Pas) -->
+      <!-- Header Brand -->
       <div class="brand-section">
         <img src="/images/Hope_logo.png" alt="HOPE Logo" class="brand-logo-img" />
         <p class="brand-subtitle">Hitung Omset dan Penjualan Elektronik</p>
@@ -321,7 +306,7 @@ const handleForgotPassword = () => {
 }
 
 .text-input:focus {
-  border-color: #3498db;
+  border-color: #db3495;
 }
 
 .cursor-pointer {

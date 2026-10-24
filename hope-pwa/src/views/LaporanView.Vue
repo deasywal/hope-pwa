@@ -4,7 +4,10 @@ import { ref, computed, onMounted } from 'vue'
 // State Data
 const productList = ref([])
 const transactionList = ref([])
+const expenseList = ref([])
 const aktifTab = ref('statistik') // 'statistik' atau 'terlaris'
+const bukaCatatan = ref(false) // dropdown catatan pengeluaran
+const bukaRiwayat = ref(false) // dropdown riwayat transaksi
 
 // Helper tanggal
 function tanggalLokal(date = new Date()) {
@@ -14,7 +17,7 @@ function tanggalLokal(date = new Date()) {
 
 const hariIni = tanggalLokal()
 
-// State Tanggal Filter (Default hari ini)
+// State Tanggal Filter
 const tanggalFilter = ref(hariIni)
 
 // Helper Tanggal Hari Ini
@@ -42,11 +45,11 @@ function formatTanggal(iso) {
   })
 }
 
-// Bulan yang dipilih (YYYY-MM) dari tanggal filter
+// State Bulan yang dipilih 
 const bulanFilter = computed(() => (tanggalFilter.value || hariIni).slice(0, 7))
 const isBulanIni = computed(() => bulanFilter.value === hariIni.slice(0, 7))
 
-// Format Tanggal 
+// Format Tanggal
 const formatFilterTeks = computed(() => {
   const parts = bulanFilter.value.split('-').map(Number)
   if (parts.length < 2 || !parts[0] || !parts[1]) return 'Pilih Tanggal'
@@ -59,8 +62,19 @@ const formatFilterTeks = computed(() => {
 
 // Format Rupiah
 function rupiah(angka) {
-  return 'Rp ' + Number(angka || 0).toLocaleString('id-ID')
+  const n = Number(angka || 0)
+  return (n < 0 ? '-Rp ' : 'Rp ') + Math.abs(n).toLocaleString('id-ID')
 }
+
+// Total pcs terjual dalam satu transaksi
+function totalPcsTransaksi(trx) {
+  if (!trx.items || !Array.isArray(trx.items)) return 0
+  return trx.items.reduce((sum, item) => sum + (Number(item.jumlah || item.qty) || 0), 0)
+}
+
+// Nominal & nama pengeluaran
+const nominalExp = e => Number(e.nominal ?? e.jumlah ?? e.amount ?? e.harga ?? 0) || 0
+const namaExp = e => e.nama || e.keterangan || e.name || e.catatan || 'Pengeluaran'
 
 // Ambil data dari localStorage saat komponen dimuat
 onMounted(() => {
@@ -81,6 +95,17 @@ onMounted(() => {
       console.error(e)
     }
   }
+
+  // Pengeluaran operasional
+  const savedExpenses = localStorage.getItem('expensesList')
+  if (savedExpenses) {
+    try {
+      const data = JSON.parse(savedExpenses)
+      expenseList.value = Array.isArray(data) ? data : []
+    } catch (e) {
+      console.error(e)
+    }
+  }
 })
 
 // Transaksi valid
@@ -91,6 +116,22 @@ const transaksiValid = computed(() =>
 // Transaksi pada bulan yang dipilih
 const transaksiBulan = computed(() =>
   transaksiValid.value.filter(t => String(t.tanggal).trim().substring(0, 7) === bulanFilter.value)
+)
+
+// Pengeluaran pada bulan yang dipilih
+const pengeluaranBulan = computed(() =>
+  expenseList.value.filter(e => {
+    if (!e.tanggal) return false
+    const tgl = String(e.tanggal).trim()
+    return tgl.substring(0, 10) <= hariIni && tgl.substring(0, 7) === bulanFilter.value
+  })
+)
+
+// Catatan pengeluaran bulan ini
+const pengeluaranBulanUrut = computed(() =>
+  [...pengeluaranBulan.value].sort((a, b) =>
+    String(b.tanggal).localeCompare(String(a.tanggal))
+  )
 )
 
 // Riwayat bulan ini
@@ -136,8 +177,8 @@ const totalProdukTerjual = computed(() => {
   return count
 })
 
-// Total Pengeluaran / Modal dari produk yang terjual
-const totalPengeluaranBulanIni = computed(() => {
+// Total Modal dari produk yang terjual
+const totalModalBulanIni = computed(() => {
   let totalModal = 0
   transaksiBulan.value.forEach(t => {
     if (t.items && Array.isArray(t.items)) {
@@ -150,15 +191,21 @@ const totalPengeluaranBulanIni = computed(() => {
   return Math.round(totalModal)
 })
 
+// Total Pengeluaran operasional
+const totalPengeluaranBulanIni = computed(() => {
+  return pengeluaranBulan.value.reduce((sum, e) => sum + nominalExp(e), 0)
+})
+
+// Keuntungan bersih
 const totalKeuntunganBulanIni = computed(() => {
-  return totalPenjualanBulanIni.value - totalPengeluaranBulanIni.value
+  return totalPenjualanBulanIni.value - totalModalBulanIni.value - totalPengeluaranBulanIni.value
 })
 
 // Perhitungan Produk Terlaris
 const produkTerlarisList = computed(() => {
   const penjualanMap = {}
 
-  transaksiValid.value.forEach(t => {
+  transaksiBulan.value.forEach(t => {
     if (t.items && Array.isArray(t.items)) {
       t.items.forEach(item => {
         const cleanName = (item.nama || item.name || '').trim().toLowerCase()
@@ -166,16 +213,21 @@ const produkTerlarisList = computed(() => {
         const key = `${cleanName}-${cleanVar}`
 
         if (!penjualanMap[key]) {
-          // Gambar diambil dari data produk
           const prod = productList.value.find(p => p.id === (item.produkId ?? item.productId))
           penjualanMap[key] = {
             nama: item.nama || item.name,
             varian: item.varian || item.variant || 'Original',
             totalTerjual: 0,
+            totalOmzet: 0,
             image: prod?.image || item.image || '/images/icons8-new-product-50.png'
           }
         }
-        penjualanMap[key].totalTerjual += Number(item.jumlah || item.qty || 0)
+
+        const qty = Number(item.jumlah || item.qty || 0)
+        const subtotal = Number(item.subtotal) || qty * (Number(item.harga ?? item.price) || 0)
+
+        penjualanMap[key].totalTerjual += qty
+        penjualanMap[key].totalOmzet += subtotal
       })
     }
   })
@@ -194,15 +246,15 @@ const produkTerlarisList = computed(() => {
 
     <!-- Tombol Tab Pilihan -->
     <div class="tab-switch-container">
-      <button 
-        class="tab-btn" 
+      <button
+        class="tab-btn"
         :class="{ active: aktifTab === 'statistik' }"
         @click="aktifTab = 'statistik'"
       >
         Statistik Bulanan
       </button>
-      <button 
-        class="tab-btn" 
+      <button
+        class="tab-btn"
         :class="{ active: aktifTab === 'terlaris' }"
         @click="aktifTab = 'terlaris'"
       >
@@ -210,23 +262,24 @@ const produkTerlarisList = computed(() => {
       </button>
     </div>
 
-    <!-- Statistik Bulanan -->
-    <div v-if="aktifTab === 'statistik'">
-      
-      <!-- Filter Tanggal -->
-      <div class="filter-card-display">
-        <span class="filter-text">{{ formatFilterTeks }}</span>
-        <div class="filter-right-wrapper">
-          <div class="icon-date-container">
-            <img src="/images/icons8-plus-1-month-50.png" alt="Bulan" class="icon-asset-small" />
-            <input 
-              type="date" 
-              v-model="tanggalFilter" 
-              class="hidden-date-input"
-            />
-          </div>
+    <!-- Filter Bulan -->
+    <div class="filter-card-display">
+      <span class="filter-text">{{ formatFilterTeks }}</span>
+      <div class="filter-right-wrapper">
+        <div class="icon-date-container">
+          <img src="/images/icons8-plus-1-month-50.png" alt="Bulan" class="icon-asset-small" />
+          <input
+            type="date"
+            v-model="tanggalFilter"
+            :max="hariIni"
+            class="hidden-date-input"
+          />
         </div>
       </div>
+    </div>
+
+    <!-- Statistik Bulanan -->
+    <div v-if="aktifTab === 'statistik'">
 
       <!-- Banner Utama Pendapatan -->
       <div class="main-revenue-banner-white">
@@ -241,14 +294,16 @@ const produkTerlarisList = computed(() => {
 
       <!-- Data Penjualan Bulanan -->
       <div class="summary-grid">
-        <!-- Total Penjualan -->
+        <!-- Total Keuntungan -->
         <div class="summary-box">
           <div class="box-header">
-            <span class="box-label">Total Penjualan</span>
-            <img src="/images/icons8-money-50.png" alt="Penjualan" class="icon-asset-small" />
+            <span class="box-label">Total Keuntungan</span>
+            <img src="/images/icons8-profit-50.png" alt="Keuntungan" class="icon-asset-small" />
           </div>
-          <h3 class="box-value">{{ rupiah(totalPenjualanBulanIni) }}</h3>
-          <span class="box-sub">Dari transaksi terbaru</span>
+          <h3 class="box-value profit-value" :class="{ negatif: totalKeuntunganBulanIni < 0 }">
+            {{ rupiah(totalKeuntunganBulanIni) }}
+          </h3>
+          <span class="box-sub" :class="{ 'box-sub-negatif': totalKeuntunganBulanIni < 0 }">Estimasi bersih</span>
         </div>
 
         <!-- Total Produk Terjual -->
@@ -261,6 +316,16 @@ const produkTerlarisList = computed(() => {
           <span class="box-sub">Akumulasi penjualan</span>
         </div>
 
+        <!-- Total Modal -->
+        <div class="summary-box">
+          <div class="box-header">
+            <span class="box-label">Total Modal</span>
+            <img src="/images/icons8-stock-50.png" alt="Modal" class="icon-asset-small" />
+          </div>
+          <h3 class="box-value">{{ rupiah(totalModalBulanIni) }}</h3>
+          <span class="box-sub">Biaya modal/produk</span>
+        </div>
+
         <!-- Total Pengeluaran -->
         <div class="summary-box">
           <div class="box-header">
@@ -268,32 +333,76 @@ const produkTerlarisList = computed(() => {
             <img src="/images/icons8-bill-50.png" alt="Pengeluaran" class="icon-asset-small" />
           </div>
           <h3 class="box-value">{{ rupiah(totalPengeluaranBulanIni) }}</h3>
-          <span class="box-sub">Biaya modal/produk</span>
-        </div>
-
-        <!-- Total Keuntungan -->
-        <div class="summary-box">
-          <div class="box-header">
-            <span class="box-label">Total Keuntungan</span>
-            <img src="/images/icons8-profit-50.png" alt="Keuntungan" class="icon-asset-small" />
-          </div>
-          <h3 class="box-value profit-value">{{ rupiah(totalKeuntunganBulanIni) }}</h3>
-          <span class="box-sub">Estimasi bersih</span>
+          <span class="box-sub">{{ totalPengeluaranBulanIni > 0 ? 'Biaya operasional' : 'Belum ada pengeluaran' }}</span>
         </div>
       </div>
 
-      <!-- Rincian Transaksi Terbaru -->
-      <div class="section-container mt-16">
-        <h3 class="section-title">{{ isBulanIni ? 'Riwayat Transaksi Bulan Ini' : 'Riwayat Transaksi ' + formatFilterTeks }}</h3>
-        <p v-if="transaksiBulanUrut.length === 0" class="empty-info">Belum ada transaksi tercatat pada bulan ini.</p>
-        
-        <div v-for="trx in transaksiBulanUrut" :key="trx.id" class="trx-history-item">
-          <div class="trx-info">
-            <span class="trx-date">{{ formatTanggal(trx.tanggal) }}</span>
-            <span class="trx-items-count">{{ trx.items ? trx.items.length : 0 }} jenis produk dibeli</span>
+      <!-- Bagian Catatan Pengeluaran -->
+      <div class="simple-expense-section">
+        <div class="simple-expense-clickable" @click="bukaCatatan = !bukaCatatan">
+          <span class="simple-title-blue">Catatan Pengeluaran Bulan Ini</span>
+        </div>
+
+        <!-- Dropdown Rincian Pengeluaran -->
+        <div v-if="bukaCatatan" class="expense-dropdown-clean">
+          <p v-if="pengeluaranBulanUrut.length === 0" class="empty-info-clean">
+            Belum ada catatan pengeluaran pada bulan ini.
+          </p>
+          
+          <!-- List Rincian Item -->
+          <div
+            v-for="(e, i) in pengeluaranBulanUrut"
+            :key="e.id ?? i"
+            class="expense-row-item"
+          >
+            <div class="trx-info-spaced">
+              <span class="expense-row-name">{{ namaExp(e) }}</span>
+              <span class="expense-row-date">{{ formatTanggal(String(e.tanggal).trim().substring(0, 10)) }}</span>
+            </div>
+            <strong class="expense-row-nominal">{{ rupiah(nominalExp(e)) }}</strong>
           </div>
-          <div class="trx-total-price">
-            <strong>{{ rupiah(trx.total) }}</strong>
+
+          <!-- Total di Paling Bawah List -->
+          <div v-if="pengeluaranBulanUrut.length > 0" class="expense-total-footer-row">
+            <span class="expense-total-label">Total Pengeluaran</span>
+            <strong class="expense-total-amount">{{ rupiah(totalPengeluaranBulanIni) }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bagian Riwayat Transaksi Bulan Ini -->
+      <div class="simple-expense-section mt-16">
+        <div class="simple-expense-clickable" @click="bukaRiwayat = !bukaRiwayat">
+          <span class="simple-title-blue">
+            {{ isBulanIni ? 'Riwayat Transaksi Bulan Ini' : 'Riwayat Transaksi ' + formatFilterTeks }}
+          </span>
+        </div>
+
+        <!-- Dropdown Rincian Riwayat Transaksi -->
+        <div v-if="bukaRiwayat" class="expense-dropdown-clean">
+          <p v-if="transaksiBulanUrut.length === 0" class="empty-info-clean">
+            Belum ada transaksi tercatat pada bulan ini.
+          </p>
+
+          <!-- List Riwayat Transaksi -->
+          <div
+            v-for="trx in transaksiBulanUrut"
+            :key="trx.id"
+            class="expense-row-item"
+          >
+            <div class="trx-info-spaced">
+              <span class="expense-row-name">{{ formatTanggal(trx.tanggal) }}</span>
+              <span class="expense-row-date">
+                {{ totalPcsTransaksi(trx) }} pcs terjual · {{ trx.items ? trx.items.length : 0 }} jenis produk
+              </span>
+            </div>
+            <strong class="trx-item-nominal">{{ rupiah(trx.total) }}</strong>
+          </div>
+
+          <!-- Total bottom -->
+          <div v-if="transaksiBulanUrut.length > 0" class="expense-total-footer-row">
+            <span class="expense-total-label">Total Pendapatan</span>
+            <strong class="trx-total-amount">{{ rupiah(totalPenjualanBulanIni) }}</strong>
           </div>
         </div>
       </div>
@@ -307,12 +416,12 @@ const produkTerlarisList = computed(() => {
       </div>
 
       <div v-if="produkTerlarisList.length === 0" class="empty-card">
-        <p>Belum ada data penjualan produk.</p>
+        <p>Belum ada data penjualan produk pada {{ isBulanIni ? 'bulan ini' : formatFilterTeks }}.</p>
       </div>
 
-      <div 
-        v-for="(prod, index) in produkTerlarisList" 
-        :key="index" 
+      <div
+        v-for="(prod, index) in produkTerlarisList"
+        :key="index"
         class="card product-rank-card"
       >
         <div class="rank-number" :class="{ 'rank-1-box': index === 0 }">
@@ -322,9 +431,11 @@ const produkTerlarisList = computed(() => {
         <img :src="prod.image" alt="Produk" class="rank-thumb" />
         <div class="rank-info">
           <h4 class="rank-name">{{ prod.nama }} - {{ prod.varian }}</h4>
+          <span class="rank-omzet">Omzet {{ rupiah(prod.totalOmzet) }}</span>
         </div>
         <div class="rank-total">
           <strong>{{ prod.totalTerjual }} pcs</strong>
+          <span class="rank-total-label">terjual</span>
         </div>
       </div>
     </div>
@@ -409,7 +520,7 @@ input:focus, button:focus, *:focus {
 .filter-text {
   font-weight: bold;
   font-size: 15px;
-  color: ##3367DA;
+  color: #3367DA;
 }
 
 .filter-right-wrapper {
@@ -480,11 +591,120 @@ input:focus, button:focus, *:focus {
   font-weight: 500;
 }
 
+/* Kolom Dropdown */
+.simple-expense-section {
+  background: white;
+  border: 2px solid #e0e3eb;
+  border-radius: 16px;
+  padding: 16px;
+  margin-top: 12px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.simple-expense-clickable {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  text-align: center;
+}
+
+.simple-title-blue {
+  font-size: 14px;
+  font-weight: bold;
+  color: #3367DA;
+}
+
+.expense-dropdown-clean {
+  margin-top: 14px;
+  border-top: 1px solid #f1f2f6;
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.expense-row-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px dashed #f1f2f6;
+}
+
+/* Spase text */
+.trx-info-spaced {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 12px;
+}
+
+.expense-row-name {
+  font-size: 13px;
+  font-weight: bold;
+  color: #1e272e;
+}
+
+.expense-row-date {
+  font-size: 11px;
+  color: #718093;
+}
+
+.expense-row-nominal {
+  font-size: 13px;
+  color: #e74c3c;
+  flex-shrink: 0;
+}
+
+.trx-item-nominal {
+  font-size: 13px;
+  color: #27ae60;
+  flex-shrink: 0;
+}
+
+/* Footer Total */
+.expense-total-footer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 2px solid #e0e3eb;
+}
+
+.expense-total-label {
+  font-size: 13px;
+  font-weight: bold;
+  color: #1e272e;
+}
+
+.expense-total-amount {
+  font-size: 15px;
+  font-weight: bold;
+  color: #e74c3c;
+}
+
+.trx-total-amount {
+  font-size: 15px;
+  font-weight: bold;
+  color: #27ae60;
+}
+
+.empty-info-clean {
+  font-size: 12px;
+  color: #718093;
+  text-align: center;
+  padding: 8px 0;
+  margin: 0;
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 4px;
 }
 
 .summary-box {
@@ -521,8 +741,16 @@ input:focus, button:focus, *:focus {
   font-weight: 500;
 }
 
+.box-sub.box-sub-negatif {
+  color: #e74c3c;
+}
+
 .profit-value {
   color: #2ed573;
+}
+
+.profit-value.negatif {
+  color: #e74c3c;
 }
 
 .section-container {
@@ -549,40 +777,6 @@ input:focus, button:focus, *:focus {
   text-align: center;
   padding: 10px 0;
   margin: 0;
-}
-
-.trx-history-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid #f1f2f6;
-}
-
-.trx-history-item:last-child {
-  border-bottom: none;
-}
-
-.trx-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.trx-date {
-  font-size: 13px;
-  font-weight: bold;
-  color: #1e272e;
-}
-
-.trx-items-count {
-  font-size: 11px;
-  color: #718093;
-}
-
-.trx-total-price {
-  font-size: 13px;
-  color: #27ae60;
-  font-weight: bold;
 }
 
 .section-header-row {
@@ -669,10 +863,28 @@ input:focus, button:focus, *:focus {
   text-overflow: ellipsis;
 }
 
+.rank-omzet {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: bold;
+  color: #2ed573;
+}
+
 .rank-total {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   font-size: 13px;
   font-weight: bold;
   color: #3367DA;
   flex-shrink: 0;
+}
+
+.rank-total-label {
+  font-size: 10px;
+  font-weight: normal;
+  color: #718093;
+  margin-top: 2px;
 }
 </style>

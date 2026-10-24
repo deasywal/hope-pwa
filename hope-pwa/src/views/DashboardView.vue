@@ -27,7 +27,7 @@ function formatRupiah(angka) {
   return (n < 0 ? '-Rp ' : 'Rp ') + Math.abs(n).toLocaleString('id-ID')
 }
 
-// ===== Baca localStorage array =====
+// ===== Membaca localStorage array =====
 function bacaList(key) {
   try {
     const raw = localStorage.getItem(key)
@@ -142,14 +142,17 @@ function loadDashboardData(dateStr) {
   }
 }
 
-// ===== Hitung Grafik Statistik (7 hari terakhir) =====
+// ===== Hitung Grafik Statistik (urutan tetap Sen - Min, minggu dari tanggal terpilih) =====
 function calculateChart(dateStr, transactions) {
   const [y, m, d] = dateStr.split('-').map(Number)
-  const namaHari = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
+  const namaHari = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
 
-  const hari = Array.from({ length: 7 }, (_, i) => {
-    const dt = new Date(y, m - 1, d - 6 + i)
-    return { key: tanggalLokal(dt), day: namaHari[dt.getDay()], total: 0 }
+  // Cari hari Senin di minggu tanggal terpilih
+  const selisihKeSenin = (new Date(y, m - 1, d).getDay() + 6) % 7
+
+  const hari = namaHari.map((nama, i) => {
+    const dt = new Date(y, m - 1, d - selisihKeSenin + i)
+    return { key: tanggalLokal(dt), day: nama, total: 0 }
   })
 
   transactions.forEach(t => {
@@ -602,6 +605,9 @@ input:focus, button:focus, *:focus {
 }
 
 .expense-actions {
+  dashboard-container {
+    padding: 16px 20px 100px;
+  }
   display: flex;
   gap: 10px;
 }
