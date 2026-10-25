@@ -12,7 +12,7 @@ onMounted(() => {
     } else {
       router.replace('/login')
     }
-  }, 2500) // Durasi
+  }, 3000) // Durasi
 })
 </script>
 
@@ -34,22 +34,24 @@ onMounted(() => {
         <span></span>
         <span></span>
       </div>
+    </div>
 
-      <!-- Watermark & Versi -->
-      <div class="splash-footer-inline">
-        <span class="watermark-text">© Capston Project 44/B</span>
-        <span class="version-text">v0.1.0.0</span>
-      </div>
+    <!-- Watermark & Versi (menempel di bawah layar) -->
+    <div class="splash-footer-inline">
+      <span class="watermark-text">© Capston Project 44/B</span>
+      <span class="version-text">v0.1.0.0</span>
     </div>
   </div>
 </template>
 
 <style scoped>
 .splash-container {
+  position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
+  min-height: 100dvh;
   background-color: #ffffff;
   max-width: 600px;
   margin: 0 auto;
@@ -122,11 +124,15 @@ onMounted(() => {
 
 /* Watermark & Versi */
 .splash-footer-inline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  margin-top: 20px;
+  gap: 6px;
+  padding: 0 20px calc(24px + env(safe-area-inset-bottom, 0px));
 }
 
 .watermark-text {
@@ -137,7 +143,7 @@ onMounted(() => {
 }
 
 .version-text {
-  font-size: 11px;
+  font-size: 12px;
   color: #718093;
   font-weight: 500;
 }

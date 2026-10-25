@@ -15,13 +15,13 @@ const expenseNote = ref('')
 const expenseAmount = ref('')
 const pengeluaranList = ref([])
 
-// ===== Tanggal lokal =====
+// ===== Tanggal =====
 function tanggalLokal(date = new Date()) {
   const pad = n => String(n).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
-// ===== Format rupiah (mendukung nilai minus) =====
+// ===== Format rupiah =====
 function formatRupiah(angka) {
   const n = Number(angka) || 0
   return (n < 0 ? '-Rp ' : 'Rp ') + Math.abs(n).toLocaleString('id-ID')
@@ -142,7 +142,7 @@ function loadDashboardData(dateStr) {
   }
 }
 
-// ===== Hitung Grafik Statistik (urutan tetap Sen - Min, minggu dari tanggal terpilih) =====
+// ===== Hitung Grafik Statistik =====
 function calculateChart(dateStr, transactions) {
   const [y, m, d] = dateStr.split('-').map(Number)
   const namaHari = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
@@ -514,7 +514,7 @@ input:focus, button:focus, *:focus {
 }
 
 .empty-text {
-  font-size: 11px;
+  font-size: 12px;
   color: #718093;
   text-align: center;
   margin: 0;
@@ -561,7 +561,7 @@ input:focus, button:focus, *:focus {
 }
 
 .card-trend {
-  font-size: 11px;
+  font-size: 12px;
   color: #718093;
 }
 

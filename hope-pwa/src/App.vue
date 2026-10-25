@@ -97,6 +97,11 @@ const hideNav = computed(() => {
 </template>
 
 <style>
+/* Menghilangkan efek Bawaan Browser */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   margin: 0;
   font-family: Arial, sans-serif;
@@ -151,7 +156,7 @@ body {
 
 .welcome-header-text p {
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   color: #718093;
 }
 

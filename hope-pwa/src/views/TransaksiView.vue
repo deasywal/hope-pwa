@@ -197,7 +197,7 @@ function hapusItemKeranjang(index) {
   keranjang.value.splice(index, 1)
 }
 
-// Cek produk terjual yang stoknya di bawah batas stok
+// Cek produk terjual yang stoknya di bawah batas stock
 function cekStokMenipis() {
   const idTerjual = [...new Set(keranjang.value.map(i => i.produkId))]
   const daftar = []
@@ -263,14 +263,14 @@ function simpanTransaksi() {
   localStorage.setItem('transactionsList', JSON.stringify(transaksiList.value))
   simpanStokProduk()
 
-  // Cek stok sebelum keranjang dikosongkan
+  // ALERT Stock Produk Menipis
   const peringatanStok = cekStokMenipis()
 
   tutupForm(tanggal.value === hariIni ? 'hari-ini' : 'riwayat')
 
   let pesan = sedangEdit
-    ? 'Transaksi berhasil diperbarui dan disinkronkan ke Dashboard!'
-    : 'Transaksi berhasil dicatat dan disinkronkan ke Dashboard!'
+    ? 'Transaksi berhasil diperbarui'
+    : 'Transaksi berhasil dicatat'
 
   if (peringatanStok.length) {
     pesan += '\n\n PERINGATAN STOCK!!!:\n' + peringatanStok.join('\n') + '\n\nSegera update produk Anda di menu Produk.'

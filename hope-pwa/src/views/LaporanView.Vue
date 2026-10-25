@@ -72,6 +72,15 @@ function totalPcsTransaksi(trx) {
   return trx.items.reduce((sum, item) => sum + (Number(item.jumlah || item.qty) || 0), 0)
 }
 
+// Helper untuk menampilkan ringkasan nama produk dalam 1 transaksi
+function formatNamaProdukTrx(trx) {
+  if (!trx.items || !Array.isArray(trx.items) || trx.items.length === 0) {
+    return formatTanggal(trx.tanggal)
+  }
+  const listNama = trx.items.map(item => item.nama || item.name || 'Produk').join(', ')
+  return listNama
+}
+
 // Nominal & nama pengeluaran
 const nominalExp = e => Number(e.nominal ?? e.jumlah ?? e.amount ?? e.harga ?? 0) || 0
 const namaExp = e => e.nama || e.keterangan || e.name || e.catatan || 'Pengeluaran'
@@ -384,16 +393,16 @@ const produkTerlarisList = computed(() => {
             Belum ada transaksi tercatat pada bulan ini.
           </p>
 
-          <!-- List Riwayat Transaksi -->
+          <!-- List Riwayat Transaksi (Nama Produk di Atas, Tanggal di Bawah) -->
           <div
             v-for="trx in transaksiBulanUrut"
             :key="trx.id"
             class="expense-row-item"
           >
             <div class="trx-info-spaced">
-              <span class="expense-row-name">{{ formatTanggal(trx.tanggal) }}</span>
+              <span class="expense-row-name">{{ formatNamaProdukTrx(trx) }}</span>
               <span class="expense-row-date">
-                {{ totalPcsTransaksi(trx) }} pcs terjual · {{ trx.items ? trx.items.length : 0 }} jenis produk
+                {{ formatTanggal(trx.tanggal) }} · {{ totalPcsTransaksi(trx) }} pcs terjual
               </span>
             </div>
             <strong class="trx-item-nominal">{{ rupiah(trx.total) }}</strong>
@@ -648,7 +657,7 @@ input:focus, button:focus, *:focus {
 }
 
 .expense-row-date {
-  font-size: 11px;
+  font-size: 12px;
   color: #718093;
 }
 
@@ -736,7 +745,7 @@ input:focus, button:focus, *:focus {
 }
 
 .box-sub {
-  font-size: 11px;
+  font-size: 12px;
   color: #2ed573;
   font-weight: 500;
 }
@@ -866,7 +875,7 @@ input:focus, button:focus, *:focus {
 .rank-omzet {
   display: block;
   margin-top: 3px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: bold;
   color: #2ed573;
 }
@@ -882,7 +891,7 @@ input:focus, button:focus, *:focus {
 }
 
 .rank-total-label {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: normal;
   color: #718093;
   margin-top: 2px;

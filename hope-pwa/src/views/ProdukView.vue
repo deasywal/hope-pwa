@@ -610,7 +610,6 @@ const editProduct = (product) => {
 </template>
 
 <style scoped>
-/* Menghilangkan efek highlight*/
 * {
   -webkit-tap-highlight-color: transparent;
 }
@@ -990,11 +989,13 @@ input.no-spinner {
   margin: 0;
 }
 
+/* Optimasi Card Produk */
 .product-card {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  padding: 12px;
 }
 
 .product-card.editing {
@@ -1005,7 +1006,7 @@ input.no-spinner {
 .product-info-wrapper {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex: 1;
   min-width: 0;
 }
@@ -1037,19 +1038,23 @@ input.no-spinner {
 
 .prod-name {
   margin: 0 0 2px 0;
-  font-size: 14px;
+  font-size: 13px;
   color: #1e272e;
+  font-weight: bold;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .badge {
-  display: inline-block;
-  font-size: 11px;
+  display: block;
+  font-size: 12px;
   color: #718093;
   font-weight: normal;
   margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .prod-detail {
@@ -1061,10 +1066,11 @@ input.no-spinner {
   text-overflow: ellipsis;
 }
 
-/* Styling Button*/
+/* Styling Tombol Card */
 .card-actions {
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
   flex-shrink: 0;
 }
 
@@ -1072,13 +1078,14 @@ input.no-spinner {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 8px 12px;
+  gap: 3px;
+  padding: 8px 10px;
   border-radius: 10px;
   font-size: 13px;
   font-weight: bold;
   cursor: pointer;
   transition: all 0.2s ease;
+  min-width: 85px;
 }
 
 .card-actions svg {
