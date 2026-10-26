@@ -14,7 +14,6 @@ const togglePasswordVisibility = () => {
 }
 
 onMounted(() => {
-  // Validasi login
   if (localStorage.getItem('isLoggedIn') === 'true') {
     router.replace('/dashboard')
   }
@@ -30,16 +29,12 @@ const handleLogin = () => {
   }
 
   const savedData = localStorage.getItem('registeredAccount')
-  
-  // CEK KELENGKAPAN AKUN: Jika belum ada akun terdaftar, tolak dan minta daftar dulu
   if (!savedData) {
     errorMessage.value = 'Akun belum terdaftar. Silakan daftar dulu di halaman Daftar.'
     return
   }
 
   const account = JSON.parse(savedData)
-
-  // Validasi email dan password
   const inputEmail = email.value.trim().toLowerCase()
   const registeredEmail = (account.email || '').trim().toLowerCase()
 
@@ -48,7 +43,6 @@ const handleLogin = () => {
     return
   }
 
-  // Sinkronisasi data akun
   localStorage.setItem('isLoggedIn', 'true')
   if (account.namaPemilik) localStorage.setItem('umkmOwnerName', account.namaPemilik)
   if (account.namaUsaha) localStorage.setItem('umkmBrandName', account.namaUsaha)
@@ -114,14 +108,28 @@ const handleForgotPassword = () => {
             <div class="input-icon-wrapper left">
               <img src="/images/icons8-password-50.png" alt="Password Icon" class="input-icon" />
             </div>
+            
             <input 
               :type="showPassword ? 'text' : 'password'" 
               v-model="password" 
               placeholder="Masukkan password" 
               class="text-input password-input"
             />
-            <div class="input-icon-wrapper right cursor-pointer" @click="togglePasswordVisibility" title="Lihat/Sembunyikan Password">
-              <img src="/images/icons8-eye-50.png" alt="Toggle Password" class="input-icon eye-icon" />
+            
+            <!-- KUNCI UTAMA: 
+                 1. v-if="password.length > 0" -> Ikon benar-benar HILANG total kalau input kosong!
+                 2. :src="..." -> Otomatis ganti gambar antara mata terbuka atau tertutup. -->
+            <div 
+              v-if="password.length > 0" 
+              class="input-icon-wrapper right cursor-pointer" 
+              @click="togglePasswordVisibility" 
+              :title="showPassword ? 'Sembunyikan Password' : 'Lihat Password'"
+            >
+              <img 
+                :src="showPassword ? '/images/icons8-eye-50.png' : '/images/icons8-hide-50.png'" 
+                alt="Toggle Password" 
+                class="input-icon eye-icon" 
+              />
             </div>
           </div>
         </div>
@@ -174,7 +182,6 @@ const handleForgotPassword = () => {
   box-sizing: border-box;
 }
 
-/* Styling Brand & Logo Center */
 .brand-section {
   display: flex;
   flex-direction: column;
@@ -276,6 +283,11 @@ const handleForgotPassword = () => {
 
 .eye-icon {
   opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.eye-icon:hover {
+  opacity: 1;
 }
 
 .text-input {
@@ -306,7 +318,7 @@ const handleForgotPassword = () => {
 }
 
 .text-input:focus {
-  border-color: #db3495;
+  border-color: #3498db;
 }
 
 .cursor-pointer {
@@ -335,6 +347,7 @@ const handleForgotPassword = () => {
   background-color: #3367DA;
   color: white;
   border: none;
+  border-password: none;
   border-radius: 6px;
   font-size: 15px;
   font-weight: bold;

@@ -8,12 +8,40 @@ const router = useRouter()
 const showProfileMenu = ref(false)
 const brandName = ref(localStorage.getItem('umkmBrandName') || 'Bananif')
 
+// Variabel untuk PWA Install Prompt
+const deferredPrompt = ref(null)
+const showInstallBtn = ref(false)
+
 // Untuk update brand name secara langsung
 onMounted(() => {
   window.addEventListener('storage', () => {
     brandName.value = localStorage.getItem('umkmBrandName') || 'Bananif'
   })
+
+  // Listener PWA Install Prompt
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault()
+    deferredPrompt.value = e
+    showInstallBtn.value = true
+  })
+
+  window.addEventListener('appinstalled', () => {
+    showInstallBtn.value = false
+    deferredPrompt.value = null
+    console.log('PWA berhasil di-install!')
+  })
 })
+
+const installPwa = async () => {
+  if (!deferredPrompt.value) return
+  deferredPrompt.value.prompt()
+  const { outcome } = await deferredPrompt.value.userChoice
+  if (outcome === 'accepted') {
+    console.log('User menginstal PWA')
+  }
+  deferredPrompt.value = null
+  showInstallBtn.value = false
+}
 
 const toggleProfileMenu = () => {
   showProfileMenu.value = !showProfileMenu.value
@@ -29,7 +57,7 @@ const logout = () => {
   router.push('/login')
 }
 
-// Buat Menghilangkan Navbar dan Header pas lagi dimenu Login / Register
+// Buat Menghilangkan Navbar dan Header
 const hideNav = computed(() => {
   return route.path === '/' || route.path === '/login' || route.path === '/register'
 })
@@ -37,6 +65,18 @@ const hideNav = computed(() => {
 
 <template>
   <div class="app-container">
+
+    <!-- Banner Tombol Install PWA Custom dengan Logo (di paling atas) -->
+    <div v-if="showInstallBtn" class="install-banner">
+      <div class="install-info">
+        <img src="/images/Hope_logo.png" alt="Logo" class="install-logo" />
+        <div>
+          <h4>Install Aplikasi HOPE</h4>
+          <p>Untuk memudahkan aktivitas anda</p>
+        </div>
+      </div>
+      <button @click="installPwa" class="install-btn">Install</button>
+    </div>
     
     <!-- Header Global -->
     <header v-if="!hideNav" class="app-header">
@@ -221,6 +261,56 @@ body {
 .main-content {
   width: 100%;
   box-sizing: border-box;
+}
+
+/* Styling Banner Tombol Install PWA Custom (di paling atas halaman) */
+.install-banner {
+  background: #ffffff;
+  color: #2f3640;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  border-bottom: 1px solid #dcdde1;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.install-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.install-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.install-banner h4 {
+  margin: 0;
+  font-size: 13px;
+  color: #2f3640;
+}
+
+.install-banner p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #718093;
+}
+
+.install-btn {
+  background: #2f3640;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 12px;
 }
 
 .bottom-nav {

@@ -250,7 +250,7 @@ const produkTerlarisList = computed(() => {
     <!-- Header Laporan -->
     <div class="header-section">
       <h2>Laporan</h2>
-      <p class="subtitle">Lihat ringkasan keuangan dan performa produk.</p>
+      <p class="subtitle">Lihat ringkasan keuangan dan penjualan produk.</p>
     </div>
 
     <!-- Tombol Tab Pilihan -->
@@ -293,7 +293,7 @@ const produkTerlarisList = computed(() => {
       <!-- Banner Utama Pendapatan -->
       <div class="main-revenue-banner-white">
         <div class="banner-top">
-          <span class="banner-title">{{ isBulanIni ? 'Total Pendapatan Bulan Ini' : 'Total Pendapatan ' + formatFilterTeks }}</span>
+          <span class="banner-title">{{ isBulanIni ? 'Total Omzet Bulan Ini' : 'Total Omzet ' + formatFilterTeks }}</span>
         </div>
         <h1 class="banner-amount-dark">{{ rupiah(totalPenjualanBulanIni) }}</h1>
         <div class="banner-date-text">

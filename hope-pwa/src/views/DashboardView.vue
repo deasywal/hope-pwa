@@ -277,7 +277,7 @@ const hapusPengeluaran = (id) => {
     <section class="financial-grid">
       <div class="card info-card">
         <div class="card-header-flex">
-          <span class="card-title">Pemasukan Hari Ini</span>
+          <span class="card-title">Omzet Hari Ini</span>
           <img src="/images/icons8-money-50.png" alt="Pemasukan" class="card-icon" />
         </div>
         <h4 class="card-value">Rp {{ totalPemasukan.toLocaleString('id-ID') }}</h4>

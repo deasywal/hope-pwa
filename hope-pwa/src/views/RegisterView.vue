@@ -92,7 +92,7 @@ const handleRegister = async () => {
       <!-- Header Brand dengan Logo Gambar Asli (Rata Tengah & Pas) -->
       <div class="brand-section">
         <img src="/images/Hope_logo.png" alt="HOPE Logo" class="brand-logo-img" />
-        <p class="brand-subtitle">Hitung Omzet dan Penjualan Elektronik</p>
+        <p class="brand-subtitle">Hitung Omset dan Penjualan Elektronik</p>
       </div>
 
       <h2 class="form-title">Buat Akun HOPE</h2>
@@ -164,8 +164,18 @@ const handleRegister = async () => {
               placeholder="Minimal 6 karakter" 
               class="text-input password-input"
             />
-            <div class="input-icon-wrapper right cursor-pointer" @click="togglePasswordVisibility" title="Lihat/Sembunyikan Password">
-              <img src="/images/icons8-eye-50.png" alt="Toggle Password" class="input-icon eye-icon" />
+            <!-- Ikon Mata Password: Muncul HANYA JIKA password sudah diketik -->
+            <div 
+              v-if="password.length > 0" 
+              class="input-icon-wrapper right cursor-pointer" 
+              @click="togglePasswordVisibility" 
+              :title="showPassword ? 'Sembunyikan Password' : 'Lihat Password'"
+            >
+              <img 
+                :src="showPassword ? '/images/icons8-eye-50.png' : '/images/icons8-hide-50.png'" 
+                alt="Toggle Password" 
+                class="input-icon eye-icon" 
+              />
             </div>
           </div>
         </div>
@@ -183,8 +193,18 @@ const handleRegister = async () => {
               placeholder="Ulangi password" 
               class="text-input password-input"
             />
-            <div class="input-icon-wrapper right cursor-pointer" @click="toggleConfirmPasswordVisibility" title="Lihat/Sembunyikan Password">
-              <img src="/images/icons8-eye-50.png" alt="Toggle Password" class="input-icon eye-icon" />
+            <!-- Ikon Mata Konfirmasi Password: Muncul HANYA JIKA konfirmasi password sudah diketik -->
+            <div 
+              v-if="confirmPassword.length > 0" 
+              class="input-icon-wrapper right cursor-pointer" 
+              @click="toggleConfirmPasswordVisibility" 
+              :title="showConfirmPassword ? 'Sembunyikan Password' : 'Lihat Password'"
+            >
+              <img 
+                :src="showConfirmPassword ? '/images/icons8-eye-50.png' : '/images/icons8-hide-50.png'" 
+                alt="Toggle Password" 
+                class="input-icon eye-icon" 
+              />
             </div>
           </div>
         </div>
@@ -330,6 +350,11 @@ const handleRegister = async () => {
 
 .eye-icon {
   opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.eye-icon:hover {
+  opacity: 1;
 }
 
 .text-input {
